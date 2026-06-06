@@ -44,5 +44,7 @@ def build_defualt_bones(names):
     return bones
 
 
-def stack_clip_for_skeleton_anim(clip):
+def stack_clip_for_skeleton_anim(clip, return_qunts=False):
+    if return_qunts:
+        return np.stack([clip[n][:, :3] for n in clip.keys()], axis=1), np.stack([clip[n][:, 3:] for n in clip.keys()], axis=1) 
     return np.stack([clip[n][:, :3] for n in clip.keys()], axis=1)

@@ -1,6 +1,6 @@
 # Raw Data
 
-```json
+```Python
 // each mocap clip
 clip = {
     '_id': { '$oid' : String },
@@ -20,7 +20,7 @@ clip = {
 }
 ```
 
-```json
+```Python
 actor = [{  // Extra outer array (why ?)
     'name': String,
     'color': [ IntTriplet ],

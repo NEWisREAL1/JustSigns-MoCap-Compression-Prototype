@@ -252,6 +252,40 @@ class AnimatedPlotter:
         self._dynamic.append((_joints, F))
         self._dynamic.append((_bones, F))
         return self
+    
+
+    def add_orientations(self, positions, quats, scale=0.05, width=4,
+                         colors=("red", "green", "blue"), name="frames", **kwargs):
+        """Animate coordinate triads (local X/Y/Z axes) at each joint, showing
+        orientation that position can't (e.g. a bone's axial twist).
+ 
+        positions: (F, J, 3); quats: (F, J, 4) in [x, y, z, w] order. Each axis
+        is one multi-segment line trace over all joints, RGB = XYZ by default."""
+        from scipy.spatial.transform import Rotation as Rot  # xyzw == scalar-last
+        positions = np.asarray(positions)
+        quats = np.asarray(quats)
+        F, J, _ = positions.shape
+        R = Rot.from_quat(quats.reshape(-1, 4)).as_matrix().reshape(F, J, 3, 3)
+        self._bounds.append(positions.reshape(-1, 3))
+ 
+        def make_axis(axis):
+            def _builder(f):
+                i = min(max(f, 0), F - 1)
+                p, r = positions[i], R[i]
+                xs, ys, zs = [], [], []
+                for j in range(J):
+                    tip = p[j] + scale * r[j][:, axis]    # column = rotated basis vector
+                    xs += [p[j, 0], tip[0], None]
+                    ys += [p[j, 1], tip[1], None]
+                    zs += [p[j, 2], tip[2], None]
+                return go.Scatter3d(x=xs, y=ys, z=zs, mode="lines",
+                                    line=dict(width=width, color=colors[axis]),
+                                    name=f"{name} {'XYZ'[axis]}", showlegend=False, **kwargs)
+            return _builder
+ 
+        for axis in range(3):
+            self._dynamic.append((make_axis(axis), F))
+        return self
 
 
     def _build(self):
