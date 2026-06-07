@@ -1,400 +1,284 @@
-import matplotlib.pyplot as plt
 import numpy as np
 import plotly.graph_objects as go
 
 
-def signals_compare_plot(gt, approx, figsize=(16, 4), sharey=False):
-    fig, axs = plt.subplots(1, 3, figsize=figsize, sharex=True, sharey=sharey)
-    axes_label=["X", "Y", "Z"]
+class RotationPlotter:
+    """A wrapper class for visualizing a rotation as an oriented triad.
 
-    for i, ax in enumerate(axs):
-        ax.plot(gt[:,i], label="ground truth")
-        ax.plot(approx[:,i], label="approximate")
-        ax.set_title(f"{axes_label[i]} Signal")
-        ax.set_xlabel("frame")
-        ax.set_ylabel(f"{axes_label[i]} value")
-        ax.legend()
-        ax.grid()
+    The reference (identity) frame is drawn as thin neutral guide lines with
+    colored X/Y/Z labels; each rotation added with add_rotation() is drawn as
+    bold colored arrows on top, so the two are never confused. A wireframe
+    globe (axis tips ride on it) and an origin plane with a grid give the eye
+    something to track tilt and twist against, and the rotation's own axis is
+    drawn through the sphere with its angle.
 
-    plt.show()
-
-
-def signals_error_plot(gt, approx, abs=True, figsize=(16, 4), sharey=True):
-    fig, axs = plt.subplots(1, 3, figsize=figsize, sharex=True, sharey=sharey)
-    axes_label=["X", "Y", "Z"]
-
-    for i, ax in enumerate(axs):
-        err = gt[:,i] - approx[:,i]
-        ax.plot(err if not abs else np.abs(err), 'r-')
-        ax.set_title(f"{axes_label[i]} Error")
-        ax.set_xlabel("frame")
-        ax.set_ylabel("error")
-        ax.grid()
-
-    plt.show()
-
-
-class Plotter:
-    """A warpper class for data visualizations"""
-
-    def __init__(self, title="Plot", template="seaborn", **layout_kwargs):
-        self.fig = go.Figure()
-        self.fig.update_layout(title=title, template=template, **layout_kwargs)
-
-
-    def _parse_points(self, pts):
-        """Helper method to determine if points are 2D or 3D and extract axes."""
-        pts = np.asarray(pts)
-        if pts.ndim != 2:
-            raise ValueError(f"Expected 2D array of shape (N, 2) or (N, 3), got shape {pts.shape}")
-            
-        dims = pts.shape[1]
-        if dims == 2:
-            return go.Scatter, dict(x=pts[:, 0], y=pts[:, 1])
-        elif dims == 3:
-            return go.Scatter3d, dict(x=pts[:, 0], y=pts[:, 1], z=pts[:, 2])
-        else:
-            raise ValueError(f"Only 2D or 3D points are supported. Got {dims} dimensions.")
-        
-        
-    def add_points(self, pts, name="Points", color=None, point_size=8, **kwargs):
-        """Adds scatter points to the plot."""
-        TraceClass, coords = self._parse_points(pts)
-        
-        marker_opts = {"size": point_size}
-        if color:
-            marker_opts["color"] = color
-            
-        trace = TraceClass(
-            **coords,
-            mode="markers",
-            name=name,
-            marker=marker_opts,
-            **kwargs
-        )
-        self.fig.add_trace(trace)
-        return self
-
-
-    def add_trajectory(self, pts, name="Trajectory", color=None, line_width=3, dash="solid", **kwargs):
-        """Adds a line trajectory to the plot."""
-        TraceClass, coords = self._parse_points(pts)
-        
-        line_opts = {"width": line_width, "dash": dash}
-        if color:
-            line_opts["color"] = color
-            
-        trace = TraceClass(
-            **coords,
-            mode="lines",
-            name=name,
-            line=line_opts,
-            **kwargs
-        )
-        self.fig.add_trace(trace)
-        return self
-        
-
-    def clear(self):
-        """Clear all traces."""
-        self.fig.data = []
-    
-
-    def show(self):
-        """Render!"""
-        self.fig.show()
-
-
-class AnimatedPlotter:
-    """A wrapper class for animated data visualizations (companion to Plotter).
-
-    Register time-indexed elements, then call show(). Static context (a faint
-    full path) is drawn once; only the moving parts are rebuilt per frame, and
-    axis ranges are fixed from the data so the view doesn't lurch while playing.
-
-        ap = AnimatedPlotter(title="GT vs approx", scene={"aspectmode": "data"},
-                             scene_camera={"up": {"x": 0, "y": 1, "z": 0}})
-        ap.add_trajectory(traj, name="ground truth", color="blue")
-        ap.add_trajectory(approx_traj, name="approx", color="red")
-        ap.show()
+        rp = RotationPlotter(up="y")
+        rp.add_rotation([0, 0, 0, 1])          # quaternion [x, y, z, w]
+        rp.show()
     """
 
-    def __init__(self, title="Animation", template="seaborn", fps=30, stride=1, **layout_kwargs):
+    _colors = ("#d62728", "#2ca02c", "#1f77b4")     # X, Y, Z (softer than pure RGB)
+    _axis_names = ("X", "Y", "Z")
+
+    def __init__(self, title="Rotation", template="plotly_white", axis_len=1.0, up="y",
+                 show_sphere=True, show_plane=True, show_reference=True, **layout_kwargs):
         self.fig = go.Figure()
-        self.fig.update_layout(title=title, template=template, **layout_kwargs)
-        self.fps = fps
-        self.stride = stride
-        self._static = []      # traces drawn once
-        self._dynamic = []     # (builder(frame) -> trace, n_frames)
-        self._bounds = []      # (M, D) arrays for fixing axis ranges
+        self.axis_len = axis_len
+        self.up = up
+        self.show_sphere = show_sphere
+        self.show_plane = show_plane
+        self.show_reference = show_reference
 
-
-    @staticmethod
-    def _axes(dims):
-        """Pick the trace class and axis keys for 2D or 3D data."""
-        if dims == 2:
-            return go.Scatter, ("x", "y")
-        elif dims == 3:
-            return go.Scatter3d, ("x", "y", "z")
-        else:
-            raise ValueError(f"Only 2D or 3D points are supported. Got {dims} dimensions.")
-
-
-    @staticmethod
-    def _coords(arr, keys):
-        """Map an (N, D) array to a {x:..., y:..., (z:...)} dict."""
-        return {k: arr[:, i] for i, k in enumerate(keys)}
-
-
-    def add_trajectory(self, pts, name="Trajectory", color=None, line_width=3, dash="solid",
-                       trail=True, trail_length=None, show_path=True, head_size=6, **kwargs):
-        """Animate a point travelling along a path, leaving a trail behind it.
-
-        trail_length: number of frames the trail spans behind the head. None
-        (default) grows the trail from the start; an int shows a sliding window
-        of that many recent frames."""
-        pts = np.asarray(pts)
-        if pts.ndim != 2:
-            raise ValueError(f"Expected 2D array of shape (N, 2) or (N, 3), got shape {pts.shape}")
-        TraceClass, keys = self._axes(pts.shape[1])
-        self._bounds.append(pts)
-
-        line_opts = {"width": line_width, "dash": dash}
-        if color:
-            line_opts["color"] = color
-
-        if show_path:
-            path_line = {"width": max(line_width - 1, 1)}
-            if color:
-                path_line["color"] = color
-            self._static.append(TraceClass(
-                **self._coords(pts, keys), mode="lines", name=name,
-                line=path_line, opacity=0.25, showlegend=True))
-
-        if trail:
-            def _trail(f):
-                start = 0 if trail_length is None else max(0, f - trail_length + 1)
-                seg = pts[start:max(f, 0) + 1]
-                return TraceClass(**self._coords(seg, keys), mode="lines",
-                                  name=name, line=line_opts, showlegend=False, **kwargs)
-            self._dynamic.append((_trail, len(pts)))
-
-        def _head(f):
-            i = min(max(f, 0), len(pts) - 1)
-            marker_opts = {"size": head_size}
-            if color:
-                marker_opts["color"] = color
-            return TraceClass(**self._coords(pts[i:i + 1], keys), mode="markers",
-                              name=name, marker=marker_opts, showlegend=False, **kwargs)
-        self._dynamic.append((_head, len(pts)))
-        return self
-
-
-    def add_points(self, pts, name="Points", color=None, point_size=8, **kwargs):
-        """Animate a set of points over time. Expects (F, K, D) or (F, D)."""
-        pts = np.asarray(pts)
-        if pts.ndim == 2:                  # (F, D) single moving point -> (F, 1, D)
-            pts = pts[:, None, :]
-        if pts.ndim != 3:
-            raise ValueError(f"Expected (F, K, 2|3) or (F, 2|3), got shape {pts.shape}")
-        F, _, dims = pts.shape
-        TraceClass, keys = self._axes(dims)
-        self._bounds.append(pts.reshape(-1, dims))
-
-        def _builder(f):
-            i = min(max(f, 0), F - 1)
-            marker_opts = {"size": point_size}
-            if color:
-                marker_opts["color"] = color
-            return TraceClass(**self._coords(pts[i], keys), mode="markers",
-                              name=name, marker=marker_opts, **kwargs)
-        self._dynamic.append((_builder, F))
-        return self
-
-
-    def add_skeleton(self, P, bones, names=None, idx=None, name="Skeleton",
-                     joint_color=None, bone_color=None, joint_size=4, bone_width=3, **kwargs):
-        """Animate a skeleton. P is (F, J, D); bones is a list of (parent, child)
-        name pairs; pass names (len J) or an idx {name: row} mapping."""
-        P = np.asarray(P)
-        if P.ndim != 3:
-            raise ValueError(f"Expected skeleton array of shape (F, J, 2|3), got {P.shape}")
-        F, _, dims = P.shape
-        TraceClass, keys = self._axes(dims)
-        if idx is None:
-            if names is None:
-                raise ValueError("Provide names (len J) or an idx mapping.")
-            idx = {n: i for i, n in enumerate(names)}
-        valid = [(a, b) for a, b in bones if a in idx and b in idx]
-        bone_color = bone_color or joint_color
-        self._bounds.append(P.reshape(-1, dims))
-
-        def _joints(f):
-            i = min(max(f, 0), F - 1)
-            marker_opts = {"size": joint_size}
-            if joint_color:
-                marker_opts["color"] = joint_color
-            return TraceClass(**self._coords(P[i], keys), mode="markers", name=f"{name} (joint)", marker=marker_opts, **kwargs)
-
-        def _bones(f):
-            i = min(max(f, 0), F - 1)
-            pose = P[i]
-            segs = {k: [] for k in keys}
-            for a, b in valid:
-                pa, pb = pose[idx[a]], pose[idx[b]]
-                for d, k in enumerate(keys):
-                    segs[k] += [pa[d], pb[d], None]      # None breaks the line between bones
-            line_opts = {"width": bone_width}
-            if bone_color:
-                line_opts["color"] = bone_color
-            return TraceClass(**segs, mode="lines", name=f"{name} (bones)", line=line_opts)
-
-        self._dynamic.append((_joints, F))
-        self._dynamic.append((_bones, F))
-        return self
-    
-
-    def add_orientations(self, positions, quats, scale=0.05, width=4,
-                         colors=("red", "green", "blue"), name="frames", **kwargs):
-        """Animate coordinate triads (local X/Y/Z axes) at each joint, showing
-        orientation that position can't (e.g. a bone's axial twist).
- 
-        positions: (F, J, 3); quats: (F, J, 4) in [x, y, z, w] order. Each axis
-        is one multi-segment line trace over all joints, RGB = XYZ by default."""
-        from scipy.spatial.transform import Rotation as Rot  # xyzw == scalar-last
-        positions = np.asarray(positions)
-        quats = np.asarray(quats)
-        F, J, _ = positions.shape
-        R = Rot.from_quat(quats.reshape(-1, 4)).as_matrix().reshape(F, J, 3, 3)
-        self._bounds.append(positions.reshape(-1, 3))
- 
-        def make_axis(axis):
-            def _builder(f):
-                i = min(max(f, 0), F - 1)
-                p, r = positions[i], R[i]
-                xs, ys, zs = [], [], []
-                for j in range(J):
-                    tip = p[j] + scale * r[j][:, axis]    # column = rotated basis vector
-                    xs += [p[j, 0], tip[0], None]
-                    ys += [p[j, 1], tip[1], None]
-                    zs += [p[j, 2], tip[2], None]
-                return go.Scatter3d(x=xs, y=ys, z=zs, mode="lines",
-                                    line=dict(width=width, color=colors[axis]),
-                                    name=f"{name} {'XYZ'[axis]}", showlegend=False, **kwargs)
-            return _builder
- 
-        for axis in range(3):
-            self._dynamic.append((make_axis(axis), F))
-        return self
-
-
-    def _build(self):
-        """Assemble static traces, per-frame data, ranges, and playback controls."""
-        if not self._dynamic:
-            raise ValueError("Nothing to animate; add a trajectory, points, or skeleton first.")
-
-        n_frames = max(n for _, n in self._dynamic)
-        builders = [b for b, _ in self._dynamic]
-
-        frame_ids = list(range(0, n_frames, self.stride))
-        if frame_ids[-1] != n_frames - 1:
-            frame_ids.append(n_frames - 1)
-
-        dims, lo, hi = self._compute_bounds()
-
-        # static context, then an invisible anchor that pins the bounds in every
-        # frame (otherwise an all-dynamic scene, e.g. a skeleton, lets the view
-        # rescale per frame), then frame-0 of each dynamic element
-        self.fig.data = ()
-        for tr in self._static:
-            self.fig.add_trace(tr)
-        self.fig.add_trace(self._anchor(dims, lo, hi))
-        n_fixed = len(self._static) + 1
-        for b in builders:
-            self.fig.add_trace(b(0))
-
-        dyn_idx = list(range(n_fixed, n_fixed + len(builders)))
-        frame_layout = self._range_layout(dims, lo, hi)   # re-asserted every frame
-        self.fig.frames = [
-            go.Frame(data=[b(f) for b in builders], traces=dyn_idx,
-                     name=str(f), layout=frame_layout)
-            for f in frame_ids
-        ]
-
-        self._apply_ranges(dims, lo, hi)
-        self._apply_controls(frame_ids)
-        return self.fig
-
-
-    def _compute_bounds(self):
-        """Global padded (lo, hi) corners across all registered data."""
-        allpts = np.concatenate(self._bounds, axis=0)
-        dims = allpts.shape[1]
-        lo, hi = allpts.min(0), allpts.max(0)
-        pad = (hi - lo).max() * 0.05 or 1.0
-        return dims, lo - pad, hi + pad
-
-
-    def _anchor(self, dims, lo, hi):
-        """Invisible 2-point trace at the bounding-box corners; keeps the scene
-        extent constant even though every frame's data changes."""
-        TraceClass, keys = self._axes(dims)
-        corners = np.vstack([lo, hi])
-        return TraceClass(**self._coords(corners, keys), mode="markers",
-                          marker=dict(size=0.1, opacity=0), hoverinfo="skip", showlegend=False)
-
-
-    def _range_layout(self, dims, lo, hi):
-        """Fixed-range layout (no camera, so orbiting is preserved)."""
-        if dims == 3:
-            return go.Layout(scene=dict(
-                xaxis=dict(range=[lo[0], hi[0]], autorange=False),
-                yaxis=dict(range=[lo[1], hi[1]], autorange=False),
-                zaxis=dict(range=[lo[2], hi[2]], autorange=False)))
-        return go.Layout(
-            xaxis=dict(range=[lo[0], hi[0]], autorange=False),
-            yaxis=dict(range=[lo[1], hi[1]], autorange=False))
-
-
-    def _apply_ranges(self, dims, lo, hi):
-        """Fix axis ranges on the base layout (merges into existing scene)."""
-        self.fig.update_layout(self._range_layout(dims, lo, hi))
-
-
-    def _apply_controls(self, frame_ids):
-        """Add Play/Pause buttons and a frame scrubber."""
-        dur = int(1000 / self.fps) * self.stride
-        play = dict(label="Play", method="animate",
-                    args=[None, dict(frame=dict(duration=dur, redraw=True), fromcurrent=True)])
-        pause = dict(label="Pause", method="animate",
-                     args=[[None], dict(frame=dict(duration=0, redraw=False), mode="immediate")])
-        steps = [dict(method="animate", label=str(f),
-                      args=[[str(f)], dict(frame=dict(duration=0, redraw=True), mode="immediate")])
-                 for f in frame_ids]
+        rng = 1.45 * axis_len
+        axis_style = dict(showbackground=False, showgrid=True, gridcolor="#f0f0f0",
+                          zeroline=False, range=[-rng, rng])
         self.fig.update_layout(
-            updatemenus=[dict(type="buttons", x=0.05, y=0.05, xanchor="left", yanchor="bottom",
-                              buttons=[play, pause])],
-            sliders=[dict(active=0, x=0.05, len=0.9, currentvalue=dict(prefix="frame "), steps=steps)],
-        )
+            title=title, template=template, showlegend=True,
+            scene=dict(
+                xaxis=dict(title="X", **axis_style),
+                yaxis=dict(title="Y", **axis_style),
+                zaxis=dict(title="Z", **axis_style),
+                aspectmode="cube",
+                camera=dict(up=self._up_vector(), eye=self._default_eye())),
+            margin=dict(l=0, r=0, b=0, t=40))
+        self.fig.update_layout(**layout_kwargs)         # user overrides win
+        self._draw_scaffold()
 
+
+    # -- frame helpers ----------------------------------------------------
+    def _up_vector(self):
+        return {"y": dict(x=0, y=1, z=0),
+                "z": dict(x=0, y=0, z=1),
+                "x": dict(x=1, y=0, z=0)}[self.up]
+
+    def _default_eye(self):
+        return {"y": dict(x=1.5, y=1.0, z=1.6),
+                "z": dict(x=1.6, y=1.5, z=1.1),
+                "x": dict(x=1.1, y=1.6, z=1.5)}[self.up]
+
+    def _to_plane(self, a, b):
+        """Map in-plane (a, b) to 3D so the plane passes through the origin
+        perpendicular to the up axis (xz for y-up, xy for z-up)."""
+        zeros = np.zeros_like(a)
+        if self.up == "y":
+            return a, zeros, b
+        if self.up == "z":
+            return a, b, zeros
+        return zeros, a, b
+
+    def _on_sphere(self, t, lon):
+        """Point(s) on the sphere with the pole aligned to the up axis, so the
+        equator lies in the origin plane."""
+        up_c = np.cos(t)
+        a = np.sin(t) * np.cos(lon)
+        b = np.sin(t) * np.sin(lon)
+        if self.up == "y":
+            return a, up_c, b
+        if self.up == "z":
+            return a, b, up_c
+        return up_c, a, b
+
+
+    @staticmethod
+    def _to_matrix(rotation):
+        """Accept a quaternion [x, y, z, w], a 3x3 matrix, or any object with
+        .as_matrix() (e.g. scipy Rotation). Columns are the rotated axes."""
+        if hasattr(rotation, "as_matrix"):
+            return np.asarray(rotation.as_matrix(), dtype=float)
+        arr = np.asarray(rotation, dtype=float)
+        if arr.shape == (3, 3):
+            return arr
+        if arr.shape == (4,):
+            x, y, z, w = arr / np.linalg.norm(arr)
+            return np.array([
+                [1 - 2 * (y * y + z * z), 2 * (x * y - z * w),     2 * (x * z + y * w)],
+                [2 * (x * y + z * w),     1 - 2 * (x * x + z * z), 2 * (y * z - x * w)],
+                [2 * (x * z - y * w),     2 * (y * z + x * w),     1 - 2 * (x * x + y * y)]])
+        raise ValueError("rotation must be a quaternion [x,y,z,w], a 3x3 matrix, "
+                         "or have an .as_matrix() method")
+
+    @staticmethod
+    def _axis_angle(R):
+        """Rotation axis (unit) and angle (rad) from a rotation matrix."""
+        angle = np.arccos(np.clip((np.trace(R) - 1) / 2, -1, 1))
+        ax = np.array([R[2, 1] - R[1, 2], R[0, 2] - R[2, 0], R[1, 0] - R[0, 1]])
+        n = np.linalg.norm(ax)
+        if n < 1e-8:                                    # angle ~0 or ~pi
+            vals, vecs = np.linalg.eig(R)
+            ax = np.real(vecs[:, np.argmin(np.abs(vals - 1))])
+            n = np.linalg.norm(ax)
+        return (ax / n if n else np.array([0, 0, 1.0])), angle
+
+
+    # -- drawing ----------------------------------------------------------
+    def _triad(self, R, opacity=1.0, colors=None, prefix="", width=8, head=0.22):
+        colors = colors or self._colors
+        for i in range(3):
+            vec = R[:, i] * self.axis_len
+            self.fig.add_trace(go.Scatter3d(
+                x=[0, vec[0]], y=[0, vec[1]], z=[0, vec[2]], mode="lines",
+                line=dict(color=colors[i], width=width), opacity=opacity, showlegend=False))
+            self.fig.add_trace(go.Cone(
+                x=[vec[0]], y=[vec[1]], z=[vec[2]], u=[vec[0]], v=[vec[1]], w=[vec[2]],
+                colorscale=[[0, colors[i]], [1, colors[i]]], showscale=False,
+                sizemode="absolute", sizeref=head * self.axis_len, anchor="tip",
+                opacity=opacity, showlegend=True, name=f"{prefix}{self._axis_names[i]}"))
+
+    def _reference(self):
+        L = self.axis_len
+        for i in range(3):
+            vec = np.eye(3)[:, i] * L
+            self.fig.add_trace(go.Scatter3d(
+                x=[0, vec[0]], y=[0, vec[1]], z=[0, vec[2]], mode="lines",
+                line=dict(color="#888", width=2), opacity=0.55,
+                hoverinfo="skip", showlegend=False))
+            self.fig.add_trace(go.Scatter3d(
+                x=[vec[0] * 1.13], y=[vec[1] * 1.13], z=[vec[2] * 1.13], mode="text",
+                text=[self._axis_names[i]], textfont=dict(color=self._colors[i], size=14),
+                hoverinfo="skip", showlegend=False))
+
+    def _sphere(self):
+        r = self.axis_len
+        t = np.linspace(0, np.pi, 30)
+        lon = np.linspace(0, 2 * np.pi, 60)
+        T, Lo = np.meshgrid(t, lon)
+        sx, sy, sz = self._on_sphere(T, Lo)
+        self.fig.add_trace(go.Surface(
+            x=r * sx, y=r * sy, z=r * sz, opacity=0.06,
+            colorscale=[[0, "#4a90d9"], [1, "#4a90d9"]], showscale=False, hoverinfo="skip"))
+        xs, ys, zs = [], [], []
+        for L0 in np.linspace(0, 2 * np.pi, 13)[:-1]:           # meridians
+            tt = np.linspace(0, np.pi, 30)
+            mx, my, mz = self._on_sphere(tt, np.full_like(tt, L0))
+            xs += list(r * mx) + [None]; ys += list(r * my) + [None]; zs += list(r * mz) + [None]
+        for t0 in np.linspace(0, np.pi, 7)[1:-1]:               # parallels
+            pp = np.linspace(0, 2 * np.pi, 48)
+            px, py, pz = self._on_sphere(np.full_like(pp, t0), pp)
+            xs += list(r * px) + [None]; ys += list(r * py) + [None]; zs += list(r * pz) + [None]
+        self.fig.add_trace(go.Scatter3d(x=xs, y=ys, z=zs, mode="lines",
+            line=dict(color="#9ec5e8", width=1), opacity=0.55, hoverinfo="skip", showlegend=False))
+
+    def _plane(self):
+        ext = 1.3 * self.axis_len
+        A, B = np.meshgrid([-ext, ext], [-ext, ext])
+        x, y, z = self._to_plane(A, B)
+        self.fig.add_trace(go.Surface(x=x, y=y, z=z, opacity=0.07,
+            colorscale=[[0, "#888"], [1, "#888"]], showscale=False, hoverinfo="skip"))
+        xs, ys, zs = [], [], []
+        for c in np.linspace(-ext, ext, 9):
+            cc, line = np.array([c, c]), np.array([-ext, ext])
+            for a, b in ((cc, line), (line, cc)):
+                gx, gy, gz = self._to_plane(a, b)
+                xs += [gx[0], gx[1], None]; ys += [gy[0], gy[1], None]; zs += [gz[0], gz[1], None]
+        self.fig.add_trace(go.Scatter3d(x=xs, y=ys, z=zs, mode="lines",
+            line=dict(color="#999", width=1), opacity=0.6, hoverinfo="skip", showlegend=False))
+
+    def _draw_scaffold(self):
+        if self.show_plane:
+            self._plane()
+        if self.show_sphere:
+            self._sphere()
+        # origin marker
+        self.fig.add_trace(go.Scatter3d(x=[0], y=[0], z=[0], mode="markers",
+            marker=dict(size=3, color="#444"), hoverinfo="skip", showlegend=False))
+        if self.show_reference:
+            self._reference()
+
+
+    # -- public API -------------------------------------------------------
+    def add_rotation(self, rotation, name="rotated", colors=None, opacity=1.0,
+                     show_axis=True, axis_color="#ff8c00"):
+        """Draw a rotation (quaternion [x,y,z,w], 3x3 matrix, or scipy Rotation)
+        as a solid triad. With show_axis, also draw its axis-angle line."""
+        R = self._to_matrix(rotation)
+        self._triad(R, opacity=opacity, colors=colors, prefix=f"{name} ")
+        if show_axis:
+            ax, angle = self._axis_angle(R)
+            p = ax * self.axis_len * 1.25
+            self.fig.add_trace(go.Scatter3d(
+                x=[-p[0], p[0]], y=[-p[1], p[1]], z=[-p[2], p[2]], mode="lines+markers",
+                line=dict(color=axis_color, width=4), marker=dict(size=3, color=axis_color),
+                opacity=0.9, name=f"{name} axis ({np.degrees(angle):.0f}°)"))
+        return self
 
     def clear(self):
-        """Clear all traces, frames, and registered elements."""
-        self.fig.data = ()
-        self.fig.frames = ()
-        self._static = []
-        self._dynamic = []
-        self._bounds = []
-
+        """Clear added rotations and redraw the reference scaffold."""
+        self.fig.data = []
+        self._draw_scaffold()
 
     def show(self):
         """Render!"""
-        self._build()
         self.fig.show()
 
 
-    def save_html(self, path):
-        """Write a standalone HTML file (keeps the animation and controls)."""
-        self._build()
-        self.fig.write_html(path)
-        return path
+class RotationPathPlotter(RotationPlotter):
+    """Trace the path swept on the unit sphere by rotated reference axes over a
+    sequence of rotations (static path; animation handled by a later class).
+
+    Inherits the globe / origin-plane / reference scaffold from RotationPlotter.
+
+        rpp = RotationPathPlotter(title="RightHand path", up="y")
+        rpp.add_rotation_path(quats["RightHand"])     # (T, 4) [x,y,z,w]
+        rpp.show()
+    """
+
+    _AXIS_IDX = {"x": 0, "y": 1, "z": 2}
+
+    def _stack_matrices(self, rotations):
+        """Normalize input to (T, 3, 3). Accepts (T,4) quats, (T,3,3) matrices,
+        a single scipy Rotation holding the sequence, or an iterable of any
+        single-rotation form."""
+        if hasattr(rotations, "as_matrix"):                 # scipy Rotation(seq)
+            m = np.asarray(rotations.as_matrix(), dtype=float)
+            return m if m.ndim == 3 else m[None]
+        if isinstance(rotations, np.ndarray):
+            if rotations.ndim == 3:
+                return rotations
+            if rotations.ndim == 2 and rotations.shape[1] == 4:
+                return np.stack([self._to_matrix(q) for q in rotations])
+        return np.stack([self._to_matrix(r) for r in rotations])
+
+    def _axis_path(self, M, axis_idx, color, name, color_by_time, width, show_endpoints):
+        V = M[:, :, axis_idx] * self.axis_len               # (T, 3), rides on the globe
+        T = len(V)
+        if color_by_time:
+            line = dict(color=np.arange(T), colorscale="Viridis", width=width,
+                        colorbar=dict(title="frame", thickness=12))
+        else:
+            line = dict(color=color, width=width)
+        self.fig.add_trace(go.Scatter3d(
+            x=V[:, 0], y=V[:, 1], z=V[:, 2], mode="lines", line=line,
+            name=name, showlegend=not color_by_time,
+            text=[f"frame {i}" for i in range(T)], hoverinfo="text"))
+        if show_endpoints:
+            self.fig.add_trace(go.Scatter3d(
+                x=[V[0, 0]], y=[V[0, 1]], z=[V[0, 2]], mode="markers",
+                marker=dict(size=6, color=color, symbol="circle-open", line=dict(width=2)),
+                hoverinfo="text", text=["start"], showlegend=False))
+            self.fig.add_trace(go.Scatter3d(
+                x=[V[-1, 0]], y=[V[-1, 1]], z=[V[-1, 2]], mode="markers",
+                marker=dict(size=5, color=color, symbol="diamond"),
+                hoverinfo="text", text=["end"], showlegend=False))
+
+    def add_rotation_path(self, rotations, axes=("x", "y", "z"), name="path",
+                          colors=None, color_by_time=False, width=5,
+                          show_endpoints=True, show_end_triad=False):
+        """Draw the sphere-surface path(s) traced by the chosen reference axes.
+
+        rotations    : (T,4) quaternions [x,y,z,w], (T,3,3) matrices, a scipy
+                       Rotation sequence, or an iterable of single rotations.
+        axes         : any of 'x','y','z' to trace (default all three; one axis
+                       alone can't show twist about itself, hence three).
+        color_by_time: gradient the path by frame instead of axis color (best
+                       with a single axis); adds a frame colorbar.
+        show_end_triad: also draw the final orientation as a faint triad.
+        """
+        M = self._stack_matrices(rotations)
+        colors = colors or self._colors
+        for ax in axes:
+            i = self._AXIS_IDX[ax]
+            self._axis_path(M, i, colors[i], f"{name} {ax.upper()}",
+                            color_by_time, width, show_endpoints)
+        if show_end_triad:
+            self._triad(M[-1], opacity=0.5, prefix=f"{name} end ")
+        return self
