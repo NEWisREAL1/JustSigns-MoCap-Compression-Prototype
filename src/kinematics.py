@@ -1,7 +1,7 @@
 import numpy as np
 from scipy.spatial.transform import Rotation as R
 
-from src.skeleton import get_alex_bind_model
+from src.model import get_alex_bind_model
 
 
 def forward_kinematics(anim_quats, bind_model=None):

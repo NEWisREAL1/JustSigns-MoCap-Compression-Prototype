@@ -1,7 +1,7 @@
 import numpy as np
 import plotly.graph_objects as go
 
-from src.skeleton import get_alex_bind_model
+from src.model import get_alex_bind_model
 from src.utils import extract_frame, pack_frame_to_matrix
 from src.viz.static import DEFAULT_SKELETON_PLOT_LAYOUT
 
@@ -74,8 +74,8 @@ class AnimatedSkeletonsPlotter:
                 marker=dict(size=joints_size, color=joints_color),
                 mode="markers",
                 text=list(pos_dict.keys()),
-                name=None if name is None else f"{name} (joints)",
-                showlegend=True,
+                name=f"{name} (joints)",
+                showlegend=name is not None,
             )
 
             f_bones_trace = go.Scatter3d(
@@ -83,7 +83,8 @@ class AnimatedSkeletonsPlotter:
                 line=dict(width=bones_width, color=bones_color),
                 mode="lines",
                 connectgaps=False,
-                name=None if name is None else f"{name} (bones)",
+                name=f"{name} (bones)",
+                showlegend=name is not None,
                 hoverinfo="skip",
             )
 
