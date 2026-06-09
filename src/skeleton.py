@@ -1,8 +1,19 @@
+import numpy as np
+from pygltflib import GLTF2
+
+from src.utils import glb_get_name_hierarchy
+
+ALEX_MODEL_PATH = "model/Alex_Rig_v2.4_rokoko_wface_nov30.glb"
+
+def get_alex_bind_model():
+    gltf = GLTF2().load(ALEX_MODEL_PATH)
+    bind_model, _ = glb_get_name_hierarchy("rootx", gltf.nodes)
+    return bind_model
+
 ########## ---------- -------------------------- ---------- ##########
 ########## ---------- ARCHIVAL (Not Use Anymore) ---------- ##########
 ########## ---------- -------------------------- ---------- ##########
 
-import numpy as np
 
 JOINT_NAMES = [
     # central body (root should be hip/pelvis)

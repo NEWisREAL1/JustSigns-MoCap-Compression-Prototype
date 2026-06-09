@@ -1,8 +1,10 @@
 import numpy as np
 from scipy.spatial.transform import Rotation as R
 
+from src.skeleton import get_alex_bind_model
 
-def forward_kinematics_tree(bind_model, anim_quats):
+
+def forward_kinematics(anim_quats, bind_model=None):
     """
     Calculate global positions using a nested dictionary bind model.
     Supports both single-frame (1D) and multi-frame (2D) quaternion inputs.
@@ -11,6 +13,9 @@ def forward_kinematics_tree(bind_model, anim_quats):
     anim_quats: dict { 'joint_name.quaternion': np.array (F, 4) OR (4,) }
     returns: dict { 'joint_name': np.array (F, 3) OR (3,) }
     """
+    if bind_model is None:
+        bind_model = get_alex_bind_model()
+
     if not anim_quats:
         return {}
         

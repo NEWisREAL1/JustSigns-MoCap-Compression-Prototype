@@ -4,19 +4,20 @@ from pygltflib import GLTF2
 from scipy.spatial.transform import Rotation as R
 from scipy.spatial.transform import Slerp as S
 
+from src.skeleton import get_alex_bind_model
 from src.utils import glb_get_name_hierarchy, pack_frame_to_matrix
 
 ALEX_MODEL_PATH = "model/Alex_Rig_v2.4_rokoko_wface_nov30.glb"
 
 DEFAULT_ROTATION_PLOT_LAYOUT = dict(
-    title="This is the Title",
+    # title="This is the Title",
     template="seaborn",
     width=1000, height=600,
     margin=dict(t=80, b=0, l=0, r=0),
 )
 
 DEFAULT_SKELETON_PLOT_LAYOUT = dict(
-    title="This is the Title",
+    # title="This is the Title",
     template="simple_white",
     width=1000, height=600,
     margin=dict(t=80, b=0, l=0, r=0),
@@ -141,71 +142,81 @@ def plot_static_quat(quats, colors, reference=[0, 0, 1], layout_options=None):
     )
     fig.show()
 
-###
-### ----- Static Skeleton Plotting ----- ###
-###
 
-
-def _build_bones(pos_dict, bind_model):
+class StaticSkeletonsPlotter:
     """
-    Build bones for lines plotting
+    Plotter wrapper for static skeleton plots
     """
-    bones = []
-    parent_name = list(bind_model.keys())[0]
-    stack = [(parent_name, bind_model[parent_name])]
 
-    while stack:
-        parent_name, data = stack.pop()
-        for child_name in data["children"]:
-            bones.append(pos_dict[parent_name])
-            bones.append(pos_dict[child_name])
-            bones.append(np.array([np.nan, np.nan, np.nan]))
-            stack.append((child_name, data["children"][child_name]))
-
-    return np.array(bones)
+    def __init__(self, **fig_layout):
+        self.fig = go.Figure(layout=fig_layout)
+        self.bind_model = get_alex_bind_model()
 
 
-def plot_static_skeleton(pos_dict, bind_model=None, joints_color="blue", bones_color="red", layout_options=None):
-    """
-    Plot a single static skeleton 🦴 ...
-    """
-    fig = go.Figure(layout=layout_options)
-    points = pack_frame_to_matrix(pos_dict)
-    # bones = _build_bones(
-    #     pos_dict, 
-    #     joint_names=joint_names, parent_indices=parent_indices, bones_offset=bones_offset
-    # )
+    def _build_bones(self, pos_dict):
+        """
+        Build bones for lines plotting
+        """
+        bones = []
+        parent_name = list(self.bind_model.keys())[0]
+        stack = [(parent_name, self.bind_model[parent_name])]
 
-    fig.add_trace(
-        go.Scatter3d(
-            x=points[:, 0],
-            y=points[:, 2],
-            z=points[:, 1],
-            marker=dict(size=5, color=joints_color),
+        while stack:
+            parent_name, data = stack.pop()
+            for child_name in data["children"]:
+                bones.append(pos_dict[parent_name])
+                bones.append(pos_dict[child_name])
+                bones.append(np.array([np.nan, np.nan, np.nan]))
+                stack.append((child_name, data["children"][child_name]))
+
+        return np.array(bones)
+
+
+    def add_skeleton(
+        self, pos_dict, 
+        joints_size=5, bones_width=10,
+        offset=None, name=None, joints_color=None, bones_color=None
+        ):
+        points = pack_frame_to_matrix(pos_dict)
+        bones = self._build_bones(pos_dict)
+
+        if offset is not None:
+            offset = np.array(offset)
+            points += offset
+            bones  += offset
+
+        self.fig.add_trace(go.Scatter3d(
+            x=points[:, 0], y=points[:, 2], z=points[:, 1],
+            marker=dict(size=joints_size, color=joints_color),
             mode="markers",
             text=list(pos_dict.keys()),
-            name="joint",
+            name=None if name is None else f"{name} (joints)",
             showlegend=True,
-        )
-    )
+        ))
 
-    if bind_model is None:
-        gltf = GLTF2().load(ALEX_MODEL_PATH)
-        bind_model, _ = glb_get_name_hierarchy("rootx", gltf.nodes)
 
-    bones = _build_bones(pos_dict, bind_model)
-
-    fig.add_trace(
-        go.Scatter3d(
-            x=bones[:, 0],
-            y=bones[:, 2],
-            z=bones[:, 1],
-            line=dict(width=10, color=bones_color),
+        self.fig.add_trace(go.Scatter3d(
+            x=bones[:, 0], y=bones[:, 2], z=bones[:, 1],
+            line=dict(width=bones_width, color=bones_color),
             mode="lines",
             connectgaps=False,
-            name="bone",
+            name=None if name is None else f"{name} (bones)",
             hoverinfo="skip",
-        )
-    )
+        ))
 
-    fig.show()
+        return self
+
+
+    def update_layout(self, layout_dict):
+        self.fig.update_layout(layout_dict)
+        return self
+
+
+    def apply_defualt_layout(self):
+        self.fig.update_layout(DEFAULT_SKELETON_PLOT_LAYOUT)
+        return self
+
+
+    def show(self):
+        self.fig.show()
+        # return self
