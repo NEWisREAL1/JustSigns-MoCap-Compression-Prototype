@@ -1,0 +1,389 @@
+{
+   "rootx": {
+      "translation": ["x", "y", "z"],
+      "rotation": ["x", "y", "z", "w"],
+      "children": {
+         "spine_01x": {
+            "translation": ["x", "y", "z"],
+            "rotation": ["x", "y", "z", "w"],
+            "children": {
+               "spine_02x": {
+                  "translation": ["x", "y", "z"],
+                  "rotation": ["x", "y", "z", "w"],
+                  "children": {
+                     "spine_03x": {
+                        "translation": ["x", "y", "z"],
+                        "rotation": ["x", "y", "z", "w"],
+                        "children": {
+                           "neckx": {
+                              "translation": ["x", "y", "z"],
+                              "rotation": ["x", "y", "z", "w"],
+                              "children": {
+                                 "headx": {
+                                    "translation": ["x", "y", "z"],
+                                    "rotation": ["x", "y", "z", "w"],
+                                    "children": {}
+                                 }
+                              }
+                           },
+                           "shoulderr": {
+                              "translation": ["x", "y", "z"],
+                              "rotation": ["x", "y", "z", "w"],
+                              "children": {
+                                 "arm_stretchr": {
+                                    "translation": ["x", "y", "z"],
+                                    "rotation": ["x", "y", "z", "w"],
+                                    "children": {
+                                       "arm_twistr": {
+                                          "translation": ["x", "y", "z"],
+                                          "rotation": ["x", "y", "z", "w"],
+                                          "children": {}
+                                       },
+                                       "forearm_stretchr": {
+                                          "translation": ["x", "y", "z"],
+                                          "rotation": ["x", "y", "z", "w"],
+                                          "children": {
+                                             "forearm_twistr": {
+                                                "translation": ["x", "y", "z"],
+                                                "rotation": ["x", "y", "z", "w"],
+                                                "children": {}
+                                             },
+                                             "handr": {
+                                                "translation": ["x", "y", "z"],
+                                                "rotation": ["x", "y", "z", "w"],
+                                                "children": {
+                                                   "thumb1r": {
+                                                      "translation": ["x", "y", "z"],
+                                                      "rotation": ["x", "y", "z", "w"],
+                                                      "children": {
+                                                         "thumb2r": {
+                                                            "translation": ["x", "y", "z"],
+                                                            "rotation": ["x", "y", "z", "w"],
+                                                            "children": {
+                                                               "thumb3r": {
+                                                                  "translation": ["x", "y", "z"],
+                                                                  "rotation": ["x", "y", "z", "w"],
+                                                                  "children": {}
+                                                               }
+                                                            }
+                                                         }
+                                                      }
+                                                   },
+                                                   "index1_baser": {
+                                                      "translation": ["x", "y", "z"],
+                                                      "rotation": ["x", "y", "z", "w"],
+                                                      "children": {
+                                                         "index1r": {
+                                                            "translation": ["x", "y", "z"],
+                                                            "rotation": ["x", "y", "z", "w"],
+                                                            "children": {
+                                                               "index2r": {
+                                                                  "translation": ["x", "y", "z"],
+                                                                  "rotation": ["x", "y", "z", "w"],
+                                                                  "children": {
+                                                                     "index3r": {
+                                                                        "translation": ["x", "y", "z"],
+                                                                        "rotation": ["x", "y", "z", "w"],
+                                                                        "children": {}
+                                                                     }
+                                                                  }
+                                                               }
+                                                            }
+                                                         }
+                                                      }
+                                                   },
+                                                   "middle1_baser": {
+                                                      "translation": ["x", "y", "z"],
+                                                      "rotation": ["x", "y", "z", "w"],
+                                                      "children": {
+                                                         "middle1r": {
+                                                            "translation": ["x", "y", "z"],
+                                                            "rotation": ["x", "y", "z", "w"],
+                                                            "children": {
+                                                               "middle2r": {
+                                                                  "translation": ["x", "y", "z"],
+                                                                  "rotation": ["x", "y", "z", "w"],
+                                                                  "children": {
+                                                                     "middle3r": {
+                                                                        "translation": ["x", "y", "z"],
+                                                                        "rotation": ["x", "y", "z", "w"],
+                                                                        "children": {}
+                                                                     }
+                                                                  }
+                                                               }
+                                                            }
+                                                         }
+                                                      }
+                                                   },
+                                                   "ring1_baser": {
+                                                      "translation": ["x", "y", "z"],
+                                                      "rotation": ["x", "y", "z", "w"],
+                                                      "children": {
+                                                         "ring1r": {
+                                                            "translation": ["x", "y", "z"],
+                                                            "rotation": ["x", "y", "z", "w"],
+                                                            "children": {
+                                                               "ring2r": {
+                                                                  "translation": ["x", "y", "z"],
+                                                                  "rotation": ["x", "y", "z", "w"],
+                                                                  "children": {
+                                                                     "ring3r": {
+                                                                        "translation": ["x", "y", "z"],
+                                                                        "rotation": ["x", "y", "z", "w"],
+                                                                        "children": {}
+                                                                     }
+                                                                  }
+                                                               }
+                                                            }
+                                                         }
+                                                      }
+                                                   },
+                                                   "pinky1_baser": {
+                                                      "translation": ["x", "y", "z"],
+                                                      "rotation": ["x", "y", "z", "w"],
+                                                      "children": {
+                                                         "pinky1r": {
+                                                            "translation": ["x", "y", "z"],
+                                                            "rotation": ["x", "y", "z", "w"],
+                                                            "children": {
+                                                               "pinky2r": {
+                                                                  "translation": ["x", "y", "z"],
+                                                                  "rotation": ["x", "y", "z", "w"],
+                                                                  "children": {
+                                                                     "pinky3r": {
+                                                                        "translation": ["x", "y", "z"],
+                                                                        "rotation": ["x", "y", "z", "w"],
+                                                                        "children": {}
+                                                                     }
+                                                                  }
+                                                               }
+                                                            }
+                                                         }
+                                                      }
+                                                   }
+                                                }
+                                             }
+                                          }
+                                       }
+                                    }
+                                 }
+                              }
+                           },
+                           "shoulderl": {
+                              "translation": ["x", "y", "z"],
+                              "rotation": ["x", "y", "z", "w"],
+                              "children": {
+                                 "arm_stretchl": {
+                                    "translation": ["x", "y", "z"],
+                                    "rotation": ["x", "y", "z", "w"],
+                                    "children": {
+                                       "arm_twistl": {
+                                          "translation": ["x", "y", "z"],
+                                          "rotation": ["x", "y", "z", "w"],
+                                          "children": {}
+                                       },
+                                       "forearm_stretchl": {
+                                          "translation": ["x", "y", "z"],
+                                          "rotation": ["x", "y", "z", "w"],
+                                          "children": {
+                                             "forearm_twistl": {
+                                                "translation": ["x", "y", "z"],
+                                                "rotation": ["x", "y", "z", "w"],
+                                                "children": {}
+                                             },
+                                             "handl": {
+                                                "translation": ["x", "y", "z"],
+                                                "rotation": ["x", "y", "z", "w"],
+                                                "children": {
+                                                   "thumb1l": {
+                                                      "translation": ["x", "y", "z"],
+                                                      "rotation": ["x", "y", "z", "w"],
+                                                      "children": {
+                                                         "thumb2l": {
+                                                            "translation": ["x", "y", "z"],
+                                                            "rotation": ["x", "y", "z", "w"],
+                                                            "children": {
+                                                               "thumb3l": {
+                                                                  "translation": ["x", "y", "z"],
+                                                                  "rotation": ["x", "y", "z", "w"],
+                                                                  "children": {}
+                                                               }
+                                                            }
+                                                         }
+                                                      }
+                                                   },
+                                                   "index1_basel": {
+                                                      "translation": ["x", "y", "z"],
+                                                      "rotation": ["x", "y", "z", "w"],
+                                                      "children": {
+                                                         "index1l": {
+                                                            "translation": ["x", "y", "z"],
+                                                            "rotation": ["x", "y", "z", "w"],
+                                                            "children": {
+                                                               "index2l": {
+                                                                  "translation": ["x", "y", "z"],
+                                                                  "rotation": ["x", "y", "z", "w"],
+                                                                  "children": {
+                                                                     "index3l": {
+                                                                        "translation": ["x", "y", "z"],
+                                                                        "rotation": ["x", "y", "z", "w"],
+                                                                        "children": {}
+                                                                     }
+                                                                  }
+                                                               }
+                                                            }
+                                                         }
+                                                      }
+                                                   },
+                                                   "middle1_basel": {
+                                                      "translation": ["x", "y", "z"],
+                                                      "rotation": ["x", "y", "z", "w"],
+                                                      "children": {
+                                                         "middle1l": {
+                                                            "translation": ["x", "y", "z"],
+                                                            "rotation": ["x", "y", "z", "w"],
+                                                            "children": {
+                                                               "middle2l": {
+                                                                  "translation": ["x", "y", "z"],
+                                                                  "rotation": ["x", "y", "z", "w"],
+                                                                  "children": {
+                                                                     "middle3l": {
+                                                                        "translation": ["x", "y", "z"],
+                                                                        "rotation": ["x", "y", "z", "w"],
+                                                                        "children": {}
+                                                                     }
+                                                                  }
+                                                               }
+                                                            }
+                                                         }
+                                                      }
+                                                   },
+                                                   "ring1_basel": {
+                                                      "translation": ["x", "y", "z"],
+                                                      "rotation": ["x", "y", "z", "w"],
+                                                      "children": {
+                                                         "ring1l": {
+                                                            "translation": ["x", "y", "z"],
+                                                            "rotation": ["x", "y", "z", "w"],
+                                                            "children": {
+                                                               "ring2l": {
+                                                                  "translation": ["x", "y", "z"],
+                                                                  "rotation": ["x", "y", "z", "w"],
+                                                                  "children": {
+                                                                     "ring3l": {
+                                                                        "translation": ["x", "y", "z"],
+                                                                        "rotation": ["x", "y", "z", "w"],
+                                                                        "children": {}
+                                                                     }
+                                                                  }
+                                                               }
+                                                            }
+                                                         }
+                                                      }
+                                                   },
+                                                   "pinky1_basel": {
+                                                      "translation": ["x", "y", "z"],
+                                                      "rotation": ["x", "y", "z", "w"],
+                                                      "children": {
+                                                         "pinky1l": {
+                                                            "translation": ["x", "y", "z"],
+                                                            "rotation": ["x", "y", "z", "w"],
+                                                            "children": {
+                                                               "pinky2l": {
+                                                                  "translation": ["x", "y", "z"],
+                                                                  "rotation": ["x", "y", "z", "w"],
+                                                                  "children": {
+                                                                     "pinky3l": {
+                                                                        "translation": ["x", "y", "z"],
+                                                                        "rotation": ["x", "y", "z", "w"],
+                                                                        "children": {}
+                                                                     }
+                                                                  }
+                                                               }
+                                                            }
+                                                         }
+                                                      }
+                                                   }
+                                                }
+                                             }
+                                          }
+                                       }
+                                    }
+                                 }
+                              }
+                           }
+                        }
+                     }
+                  }
+               }
+            }
+         },
+         "thigh_stretchl": {
+            "translation": ["x", "y", "z"],
+            "rotation": ["x", "y", "z", "w"],
+            "children": {
+               "thigh_twistl": {
+                  "translation": ["x", "y", "z"],
+                  "rotation": ["x", "y", "z", "w"],
+                  "children": {}
+               },
+               "leg_stretchl": {
+                  "translation": ["x", "y", "z"],
+                  "rotation": ["x", "y", "z", "w"],
+                  "children": {
+                     "footl": {
+                        "translation": ["x", "y", "z"],
+                        "rotation": ["x", "y", "z", "w"],
+                        "children": {
+                           "toes_01l": {
+                              "translation": ["x", "y", "z"],
+                              "rotation": ["x", "y", "z", "w"],
+                              "children": {}
+                           }
+                        }
+                     },
+                     "leg_twistl": {
+                        "translation": ["x", "y", "z"],
+                        "rotation": ["x", "y", "z", "w"],
+                        "children": {}
+                     }
+                  }
+               }
+            }
+         },
+         "thigh_stretchr": {
+            "translation": ["x", "y", "z"],
+            "rotation": ["x", "y", "z", "w"],
+            "children": {
+               "thigh_twistr": {
+                  "translation": ["x", "y", "z"],
+                  "rotation": ["x", "y", "z", "w"],
+                  "children": {}
+               },
+               "leg_stretchr": {
+                  "translation": ["x", "y", "z"],
+                  "rotation": ["x", "y", "z", "w"],
+                  "children": {
+                     "footr": {
+                        "translation": ["x", "y", "z"],
+                        "rotation": ["x", "y", "z", "w"],
+                        "children": {
+                           "toes_01r": {
+                              "translation": ["x", "y", "z"],
+                              "rotation": ["x", "y", "z", "w"],
+                              "children": {}
+                           }
+                        }
+                     },
+                     "leg_twistr": {
+                        "translation": ["x", "y", "z"],
+                        "rotation": ["x", "y", "z", "w"],
+                        "children": {}
+                     }
+                  }
+               }
+            }
+         }
+      }
+   }
+}
