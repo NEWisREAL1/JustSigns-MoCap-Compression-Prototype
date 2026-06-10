@@ -106,6 +106,14 @@ def pack_frame_to_matrix(frame_dict):
     return matrix
 
 
+def prepare_clip(clip, clean_names=True):
+    clip = parse_clip(clip, clean_names=clean_names)
+    anim = clip["animationClip"]
+    clip_name = anim["name"]
+    quats = extract_quats(clip)
+    return clip, clip_name, quats
+
+
 #####
 ##### GLB Model Processing
 #####

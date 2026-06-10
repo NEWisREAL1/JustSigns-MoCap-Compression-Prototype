@@ -35,27 +35,43 @@ def forward_kinematics(anim_quats, bind_model=None):
         joint, data, parent = stack.pop()
         base_trans = np.array(data['translation'])
 
+        parent_is_nan = False
+        if parent is not None:
+            parent_pos = global_positions[parent]
+            parent_is_nan = np.isnan(parent_pos).any()
+
         # anim_key = f"{joint}.quaternion"
         if joint in anim_quats:
             local_q = np.asarray(anim_quats[joint])
             
             if is_single_frame:
                 local_q = local_q.reshape(1, 4) 
-                
-            local_rot = R.from_quat(local_q)
+            has_nan_quat = np.isnan(local_q).any()
+
+            if has_nan_quat:
+                local_rot = None
+            else:
+                local_rot = R.from_quat(local_q)
         else:
             local_rot = R.from_quat(np.tile(data['rotation'], (F, 1)))
 
         if parent is None:
-            global_positions[joint] = np.tile(base_trans, (F, 1))
-            global_rotations[joint] = local_rot
+            if local_rot is None:
+                global_positions[joint] = np.full((F, 3), np.nan)
+                global_rotations[joint] = None
+            else:
+                global_positions[joint] = np.tile(base_trans, (F, 1))
+                global_rotations[joint] = local_rot
         else:
-            parent_pos = global_positions[parent]
             parent_rot = global_rotations[parent]
 
-            global_rotations[joint] = parent_rot * local_rot
-            rotated_offset = parent_rot.apply(base_trans)
-            global_positions[joint] = parent_pos + rotated_offset
+            if parent_is_nan or parent_rot is None or local_rot is None:
+                global_positions[joint] = np.full((F, 3), np.nan)
+                global_rotations[joint] = None
+            else:
+                global_rotations[joint] = parent_rot * local_rot
+                rotated_offset = parent_rot.apply(base_trans)
+                global_positions[joint] = parent_pos + rotated_offset
 
         children = data.get('children', {})
         for child_name in reversed(list(children.keys())):

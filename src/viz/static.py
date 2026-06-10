@@ -14,6 +14,10 @@ DEFAULT_ROTATION_PLOT_LAYOUT = dict(
     width=1000, height=600,
     margin=dict(t=80, b=10, l=10, r=10),
     scene=dict(aspectmode="data"),
+    scene_camera=dict(
+        # up=dict(x=0, y=1, z=0),
+        eye=dict(x=1.1, y=1.1, z=1.1),
+    ),
 )
 
 DEFAULT_SKELETON_PLOT_LAYOUT = dict(
@@ -28,7 +32,7 @@ DEFAULT_SKELETON_PLOT_LAYOUT = dict(
     ),
     scene_camera=dict(
         # up=dict(x=0, y=1, z=0),
-        eye=dict(x=1.75, y=1.75, z=1.75),
+        eye=dict(x=1.85, y=1.85, z=1.85),
     ),
 )
 
