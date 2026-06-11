@@ -152,6 +152,26 @@ class AnimatedSkeletonsPlotter(BaseAnimatedPlotter):
     def __init__(self, fps=30, stride=2, **fig_layout):
         super().__init__(fps=fps, stride=stride, **fig_layout)
         self.bind_model = get_alex_bind_model()
+        self._bone_edges = self._precompute_bone_edges()
+
+
+    def _precompute_bone_edges(self):
+        """
+        Precompute parent-child joint pairs once so frame rendering only packs coordinates.
+        """
+        edges = []
+        root_name = list(self.bind_model.keys())[0]
+        stack = [(root_name, self.bind_model[root_name])]
+
+        while stack:
+            parent_name, data = stack.pop()
+            children = data["children"]
+
+            for child_name, child_data in children.items():
+                edges.append((parent_name, child_name))
+                stack.append((child_name, child_data))
+
+        return edges
 
 
     def _build_bones(self, pos_dict):
@@ -159,16 +179,11 @@ class AnimatedSkeletonsPlotter(BaseAnimatedPlotter):
         Build bones for lines plotting
         """
         bones = []
-        parent_name = list(self.bind_model.keys())[0]
-        stack = [(parent_name, self.bind_model[parent_name])]
 
-        while stack:
-            parent_name, data = stack.pop()
-            for child_name in data["children"]:
-                bones.append(pos_dict[parent_name])
-                bones.append(pos_dict[child_name])
-                bones.append(np.array([np.nan, np.nan, np.nan]))
-                stack.append((child_name, data["children"][child_name]))
+        for parent_name, child_name in self._bone_edges:
+            bones.append(pos_dict[parent_name])
+            bones.append(pos_dict[child_name])
+            bones.append(np.array([np.nan, np.nan, np.nan]))
 
         return np.array(bones)
 
@@ -180,6 +195,9 @@ class AnimatedSkeletonsPlotter(BaseAnimatedPlotter):
         ):
         first_key = list(pos_dict.keys())[0]
         n_frames = pos_dict[first_key].shape[0]
+        
+        if offset is not None:
+            offset = np.array(offset)
 
         for _ in range(0, n_frames - len(self.frames_traces)):
             self.frames_traces.append([])
@@ -190,7 +208,6 @@ class AnimatedSkeletonsPlotter(BaseAnimatedPlotter):
             f_bones = self._build_bones(f_pos_dict)
 
             if offset is not None:
-                offset = np.array(offset)
                 f_points += offset
                 f_bones  += offset
 
