@@ -199,8 +199,38 @@ class StaticRotationsPlotter(BaseStaticPlotter):
             showlegend=False,
         ))
 
+        return self
+
 
     def apply_defualt_layout(self):
         self.fig.update_layout(DEFAULT_ROTATION_PLOT_LAYOUT)
         return self
 
+
+class StaticTrajectoriesPLotter(BaseStaticPlotter):
+    """
+    Plotter wrapper for static trajectory plots
+    """
+
+    def __init__(self, **fig_layout):
+        super().__init__(**fig_layout)
+
+
+    def add_trajectory(self, pts, name=None, pts_color=None, line_color=None, pts_size=2, line_width=2):
+        pts = np.asarray(pts)
+
+        self.fig.add_trace(go.Scatter3d(
+            x=pts[:, 0], y=pts[:, 1], z=pts[:, 2],
+            mode="lines+markers",
+            marker=dict(color=pts_color, size=pts_size),
+            line=dict(color=line_color, width=line_width),
+            text=np.arange(pts.shape[0]),
+            name=name,
+        ))
+
+        return self
+
+
+    def apply_defualt_layout(self):
+        self.fig.update_layout(DEFAULT_ROTATION_PLOT_LAYOUT)
+        return self

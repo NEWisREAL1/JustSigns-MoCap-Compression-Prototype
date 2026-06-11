@@ -1,6 +1,29 @@
 import numpy as np
 
 
+class StationarySpline:
+    """
+    Yeah ...
+    """
+
+    def __init__(self, singularity):
+        self.singularity = np.asarray(singularity)
+
+        # dummy attributes (for compatability with BSpline)
+        self.degree = 0
+        self.control_pts = np.array([], dtype=np.float64)
+        self.knot_vector = np.array([], dtype=np.float64)
+
+    
+    def __call__(self, t):
+        t_arr = np.atleast_1d(t)
+        res = np.repeat([self.singularity], len(np.atleast_1d(t_arr)), axis=0)
+        
+        if np.isscalar(t) or np.ndim(t) == 0:
+            return res[0]
+        return res
+
+
 class BSpline:
     """
     Wrapper for B-Spline logics and variables
