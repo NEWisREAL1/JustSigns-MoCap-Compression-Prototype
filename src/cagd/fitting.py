@@ -15,7 +15,7 @@ class BSplineLSPIAFitter:
         initial_num_cps=10,
         time_init_method="centripetal", 
         knot_init_method="time-average", 
-        cps_init_method="sampling-uniform", 
+        cps_init_method="sampling-basismax", 
         relaxation_schedule="dynamic",
         centripetal_power=0.5,
         relaxation_factor=1.2,
@@ -132,12 +132,20 @@ class BSplineLSPIAFitter:
     ##### ----- Control Points Initialization ----- ##### 
 
     def _sampling_uniform_cps_init(self):
-        pass
+        uniform_idx = np.round(np.linspace(0, self.data_count - 1, self.num_cps)).astype(int)
+        self.control_pts = self.data[uniform_idx]
 
 
     def _sampling_basismax_cps_init(self):
-        pass
-
+        self.control_pts = np.zeros(shape=(self.num_cps, self.data_dim))
+        for j in range(self.num_cps):
+            # Greville Abscissa (the peak of the basis function)
+            t_peak = np.mean(self.knot_vector[j + 1 : j + 1 + self.degree])
+            
+            # find closest time parameter in data
+            k = np.abs(self.data_time - t_peak).argmin()            
+            self.control_pts[j] = self.data[k]
+            
 
     def _origin_cps_init(self):
         self.control_pts = np.zeros(shape=(self.num_cps, self.data_dim))
