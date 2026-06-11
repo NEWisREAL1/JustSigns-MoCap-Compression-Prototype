@@ -262,9 +262,11 @@ class BSplineLSPIAFitter:
             for j in range(self.num_cps)
         ]).T
 
-        norm_mat_inv_diag = 1 / np.sum(colloc_mat, axis=0)
-        # avoid empty support, but can produce instability
-        # norm_mat_inv_diag[np.isnan(norm_mat_inv_diag) | np.isinf(norm_mat_inv_diag)] = 0  
+        norm_mat_diag = np.sum(colloc_mat, axis=0)
+        division_mask = norm_mat_diag > 1e-10
+        norm_mat_inv_diag = np.zeros_like(norm_mat_diag)
+        norm_mat_inv_diag[division_mask] = 1.0 / norm_mat_diag[division_mask]
+        
         norm_mat_inv = np.diag(norm_mat_inv_diag)
         weight_mat = norm_mat_inv @ colloc_mat.T
         return colloc_mat, weight_mat
@@ -282,10 +284,11 @@ class BSplineLSPIAFitter:
         knot_insertion_tolerance=None,
         
         # note: reparams tends to cause instability
-        dynamic_reparams=True,
+        dynamic_reparams=False,
         reparams_every=10,
 
         err_agg_func=np.max, 
+        verbose=True,
         print_every=25,
         ):
         self.data = np.asarray(data)
@@ -338,12 +341,13 @@ class BSplineLSPIAFitter:
             err = err_agg_func(point_err)
             err_history.append(err)
 
-            if (iter + 1) % print_every == 0 or iter == 0:
+            if verbose and ((iter + 1) % print_every == 0 or iter == 0):
                 print(f"iter {iter + 1:<6} | err. = {err:.10f} ({self.num_cps} cps)")
 
             # tolerance check
             if err <= tolerance:
-                print(f"early stopping at iteration {iter + 1} due to tolerance, err. = {err} ({self.num_cps} cps)")
+                if verbose:
+                    print(f"early stopping at iteration {iter + 1} due to tolerance, err. = {err} ({self.num_cps} cps)")
                 break
 
             # convergance check
@@ -353,7 +357,8 @@ class BSplineLSPIAFitter:
                 iter_w_no_improve = 0
             
             if iter_w_no_improve >= converge_iter:
-                print(f"early stopping at iteration {iter + 1} due to convergence, err. = {err} ({self.num_cps} cps)")
+                if verbose:
+                    print(f"early stopping at iteration {iter + 1} due to convergence, err. = {err} ({self.num_cps} cps)")
                 break
 
-        return BSpline(self.degree, self.control_pts, self.knot_vector), err_history
+        return BSpline(self.degree, self.control_pts, self.knot_vector), self.data_time, err_history
