@@ -92,6 +92,13 @@ def extract_frame(values, frame):
     return frame_values
 
 
+def extract_joints(joint_dict, joint_list):
+    """
+    Extract only a certain joint data from dict { joint_name: data }
+    """
+    return { joint: joint_dict[joint] for joint in joint_list }
+
+
 def pack_frame_to_matrix(frame_dict):
     """
     Pack a dict { joint_name: np.array(D) } representing single frame into np.array(J,D)

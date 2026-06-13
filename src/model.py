@@ -28,6 +28,80 @@ def get_paper_plane_mesh(recenter=False, scale=1):
     return scale * vertices, faces
 
 
+PRIMARY_JOINT_NAMES = [
+    'rootx',
+    'spine_01x', 'spine_02x',
+    'neckx', 'headx',
+    'shoulderr', 'arm_stretchr', 'forearm_stretchr', 'handr',
+    'thumb1r','thumb2r',
+    'index1r', 'index2r', 'index3r',
+    'middle1r', 'middle2r', 'middle3r',
+    'ring1r', 'ring2r', 'ring3r',
+    'pinky1r', 'pinky2r', 'pinky3r',
+    'shoulderl', 'arm_stretchl', 'forearm_stretchl', 'handl',
+    'thumb1l', 'thumb2l',
+    'index1l', 'index2l', 'index3l',
+    'middle1l', 'middle2l', 'middle3l',
+    'ring1l', 'ring2l', 'ring3l',
+    'pinky1l', 'pinky2l', 'pinky3l',
+    'thigh_stretchl', 'leg_stretchl', 'footl',
+    'thigh_stretchr', 'leg_stretchr', 'footr',
+    ]
+
+SECONDARY_JOINT_NAMES = [
+    'spine_03x',
+    'arm_twistr', 'forearm_twistr',
+    'thumb3r', 'index1_baser', 'middle1_baser', 'ring1_baser', 'pinky1_baser',
+    'arm_twistl', 'forearm_twistl',
+    'thumb3l', 'index1_basel', 'middle1_basel', 'ring1_basel', 'pinky1_basel',
+    'thigh_twistl', 'toes_01l', 'leg_twistl',
+    'thigh_twistr', 'toes_01r', 'leg_twistr',
+    ]
+
+RIGHT_HAND_JOINTS = [
+    'handr',
+    'thumb1r','thumb2r',
+    'index1r', 'index2r', 'index3r',
+    'middle1r', 'middle2r', 'middle3r',
+    'ring1r', 'ring2r', 'ring3r',
+    'pinky1r', 'pinky2r', 'pinky3r',
+    'thumb3r', 'index1_baser', 'middle1_baser', 'ring1_baser', 'pinky1_baser',
+]
+
+LEFT_HAND_JOINTS = [
+    'handl',
+    'thumb1l','thumb2l',
+    'index1l', 'index2l', 'index3l',
+    'middle1l', 'middle2l', 'middle3l',
+    'ring1l', 'ring2l', 'ring3l',
+    'pinky1l', 'pinky2l', 'pinky3l',
+    'thumb3l', 'index1_basel', 'middle1_basel', 'ring1_basel', 'pinky1_basel',
+]
+
+RIGHT_ARM_JOINTS = [
+    'shoulderr', 'arm_stretchr', 'forearm_stretchr',
+    'arm_twistr', 'forearm_twistr',    
+]
+
+LEFT_ARM_JOINTS = [
+    'shoulderl', 'arm_stretchl', 'forearm_stretchl',
+    'arm_twistl', 'forearm_twistl',    
+]
+
+CORE_BODY = [
+    'rootx',
+    'spine_01x', 'spine_02x', 
+    'neckx', 'headx',
+    'spine_03x',
+]
+
+LOWER_BODY = [
+    'thigh_stretchl', 'leg_stretchl', 'footl',
+    'thigh_stretchr', 'leg_stretchr', 'footr',
+    'thigh_twistl', 'toes_01l', 'leg_twistl',
+    'thigh_twistr', 'toes_01r', 'leg_twistr',
+]
+
 ########## ---------- -------------------------- ---------- ##########
 ########## ---------- ARCHIVAL (Not Use Anymore) ---------- ##########
 ########## ---------- -------------------------- ---------- ##########

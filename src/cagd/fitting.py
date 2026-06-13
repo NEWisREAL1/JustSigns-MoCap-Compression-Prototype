@@ -1,4 +1,5 @@
 import numpy as np
+
 from src.cagd.bspline import BSpline
 
 
@@ -42,6 +43,7 @@ class BSplineLSPIAFitter:
         self.data_time = None
         
         self.degree = degree
+        self.init_num_cps = initial_num_cps
         self.num_cps = initial_num_cps
         self.control_pts = None
         self.knot_vector = None
@@ -77,6 +79,17 @@ class BSplineLSPIAFitter:
     def _validate(self):
         if self.time_init_method not in self.time_init_method_map.keys():
             raise ValueError(f"Unknow time_init_method \"{self.time_init_method}\"")
+
+
+    def clear(self):
+        self.data = None
+        self.data_dim = None
+        self.data_count = None
+        self.data_time = None
+        
+        self.num_cps = self.init_num_cps
+        self.control_pts = None
+        self.knot_vector = None
 
 
     ##### ----- Time Parameterization ----- ##### 

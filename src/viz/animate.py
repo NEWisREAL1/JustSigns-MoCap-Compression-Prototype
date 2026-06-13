@@ -137,6 +137,12 @@ class BaseAnimatedPlotter:
         self._build_slider()
 
 
+    def save_html(self, path, auto_build=True):
+        if auto_build:
+            self.build()
+        self.fig.write_html(path, include_plotlyjs="cdn")
+
+
     def show(self, auto_build=True):
         if auto_build:
             self.build()
@@ -181,9 +187,10 @@ class AnimatedSkeletonsPlotter(BaseAnimatedPlotter):
         bones = []
 
         for parent_name, child_name in self._bone_edges:
-            bones.append(pos_dict[parent_name])
-            bones.append(pos_dict[child_name])
-            bones.append(np.array([np.nan, np.nan, np.nan]))
+            if parent_name in pos_dict.keys() and child_name in pos_dict.keys():
+                bones.append(pos_dict[parent_name])
+                bones.append(pos_dict[child_name])
+                bones.append(np.array([np.nan, np.nan, np.nan]))
 
         return np.array(bones)
 

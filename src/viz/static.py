@@ -51,6 +51,12 @@ class BaseStaticPlotter:
         return self
 
 
+    def save_html(self, path, auto_build=True):
+        if auto_build:
+            self.build()
+        self.fig.write_html(path, include_plotlyjs="cdn")
+
+
     def show(self):
         self.fig.show()
         # return self
