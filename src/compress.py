@@ -1,85 +1,144 @@
 import numpy as np
+import pandas as pd
+from scipy.linalg import eigh
 
-from src.cagd.bspline import BSpline, StationarySpline
-from src.quaternion import (
-    antipodal_alignment,
-    check_antipodal,
-    geodesic_distances_rad,
-    quaternions_mean,
-)
+from src.cagd.splines import BSpline, StationarySpline
 
 
-def compress_clip(clip_quats, fitter, station_thres_deg=2.8, **fit_params):
-    compressed_clip = {}
-    info = {}
+class TrackCategorizer:
+    """
+    Catagorize quaternions data into static and dynamic
+    """    
+    def __init__(self, threshold_deg=2.8, dist_agg_func=np.max):
+        self.threshold_deg = threshold_deg
+        self.dist_agg_func = dist_agg_func
 
-    info["error_history"] = {}
-    info["num_moving_joints"] = 0
-    info["num_nonmoving_joints"] = 0
+    def categorize(self, data):
+        q_mean = self.quaternions_mean(data)
+        distances_deg = self.geodesic_distances_deg(data, q_mean)
+        max_distance_deg = self.dist_agg_func(distances_deg)
+        return max_distance_deg <= self.threshold_deg, q_mean, max_distance_deg
 
-    for joint_name, quats in clip_quats.items():
-        # antipodal alignment
-        if check_antipodal(quats):
-            quats = antipodal_alignment(quats)
+    def quaternions_mean(self, quats):
+        accum_mat = (quats.T @ quats) / quats.shape[0]
+        eigenvals, eigenvecs = eigh(accum_mat)
+        return eigenvecs[:, np.argmax(eigenvals)]
 
-        # stationary joint detection
-        q_mean = quaternions_mean(quats)
-        deviations_rad = geodesic_distances_rad(quats, q_mean)
-        is_stationary = np.max(deviations_rad) < np.deg2rad(station_thres_deg)
+    def geodesic_distances_deg(self, quats1, quats2):
+        quats1 = np.atleast_2d(quats1)
+        quats2 = np.atleast_2d(quats2)
+        distances_rad = 2 * np.arccos(np.clip(np.abs(quats1 @ quats2.T), 0.0, 1.0))
+        return np.rad2deg(distances_rad)
 
-        if is_stationary:
-            # collapse to singular quat
-            compressed_clip[joint_name] = {}
-            compressed_clip[joint_name]["compression_type"] = "singular"
-            compressed_clip[joint_name]["value"] = q_mean
-            compressed_clip[joint_name]["num_frame"] = quats.shape[0]
+
+
+class MoCapCompressor:
+    """
+    Warpper for MoCap compression/decompression
+    """
+
+    def __init__(
+        self, 
+        track_cate=TrackCategorizer(2.8), 
+        compress_preprocessors : list = None,
+        decompress_postprocessors : list = None,
+        ):
+        self.compress_preprocessors = compress_preprocessors
+        self.decompress_postprocessors = decompress_postprocessors
+        self.track_cate = track_cate
+
+    def compress(self, clip_quats, solver, **fit_params):
+        compressed_clip_quats = {}
+        info = dict(error={}, num_control_pts={})
+
+        for joint, quats in clip_quats.items():
+            # PREPROCESSING
+            if self.compress_preprocessors is not None:
+                for prep in self.compress_preprocessors:
+                    quats = prep(quats)
+
+            # STATIC JOINT DETECTION
+            is_static, q_mean, deviation_deg = self.track_cate.categorize(quats)
+
+            # COMPRESSING
+            if is_static:
+                # stationary joint -> just collpase to singular point
+                compressed_clip_quats[joint] = {}
+                compressed_clip_quats[joint]["compression_type"] = "singular"
+                compressed_clip_quats[joint]["fitted_spl"] = StationarySpline(q_mean)
+                compressed_clip_quats[joint]["data_time_size"] = quats.shape[0]
+                
+                info["error"][joint] = [deviation_deg]
+                info["num_control_pts"][joint] = [1]
+
+            else:
+                # mobile joint -> bspline fitting
+                solver.clear()
+                fitted_spl, data_time = solver.fit(quats, **fit_params)
+
+                compressed_clip_quats[joint] = {}
+                compressed_clip_quats[joint]["compression_type"] = "bspline"
+                compressed_clip_quats[joint]["fitted_spl"] = fitted_spl
+                compressed_clip_quats[joint]["data_time"] = data_time
+
+                info["error"][joint] = solver.history["error"]
+                info["num_control_pts"][joint] = solver.history["num_control_pts"]
+
+        return compressed_clip_quats, info
+
+    def decompress(self, compressed_clip_quats):
+        decompressed_clip_quats = {}
+
+        for joint, data in compressed_clip_quats.items():
+            type = data["compression_type"]
+
+            if type == "singular":
+                data_time = np.zeros(shape=(data["data_time_size"]))
+
+            elif type == "bspline":
+                data_time = data["data_time"]
+
+            else:
+                raise ValueError(f"Unknown compression type {type}")
+
+            quats = data["fitted_spl"](data_time)
+
+            # POSTPROCESSING
+            if self.decompress_postprocessors is not None:
+                for prep in self.decompress_postprocessors:
+                    quats = prep(quats)
             
-            info["error_history"][joint_name] = []
-            info["num_nonmoving_joints"] += 1
-
-        else:
-            # curve/spline fitting
-            fitter.clear()
-            fitted_spl, data_time, err_hist = fitter.fit(quats, **fit_params)
-            
-            # data gathering
-            compressed_clip[joint_name] = {}
-            compressed_clip[joint_name]["compression_type"] = "bspline"
-            compressed_clip[joint_name]["degree"] = fitted_spl.degree
-            compressed_clip[joint_name]["control_pts"] = fitted_spl.control_pts
-            compressed_clip[joint_name]["knot_vector"] = fitted_spl.knot_vector
-            compressed_clip[joint_name]["data_time"] = data_time
-
-            # save info
-            info["error_history"][joint_name] = err_hist
-            info["num_moving_joints"] += 1
-
-    return compressed_clip, info
+            decompressed_clip_quats[joint] = quats
+        
+        return decompressed_clip_quats
 
 
-def decompress_clip(compressed_quats):
-    decom_quats = {}
+def summarize_compression_info(raw_quats, compressed_quats, info):
+    summary = {}
+    joints = info["error"].keys()
 
-    for joint_name, compressed_joint in compressed_quats.items():
-        compression_type = compressed_joint["compression_type"]
+    for joint in joints:
+        summary[joint] = {}
 
-        if compression_type == "bspline":
-            degree = compressed_joint["degree"]
-            control_pts = compressed_joint["control_pts"]
-            knot_vector = compressed_joint["knot_vector"]
-            data_time = compressed_joint["data_time"]
+        type = compressed_quats[joint]["compression_type"]
+        summary[joint]["compression_type"] = type
+        summary[joint]["final_error"]      = info["error"][joint][-1]
+        summary[joint]["num_iterations"]   = len(info["error"][joint])
+        summary[joint]["num_control_pts"]  = compressed_quats[joint]["fitted_spl"].control_pts.shape[0]
+        summary[joint]["num_knots"]        = compressed_quats[joint]["fitted_spl"].knot_vector.shape[0]
 
-            spl = BSpline(degree, control_pts, knot_vector)
-            decom_quats[joint_name] = spl(data_time)
+        if type == "singular":
+            summary[joint]["num_data_time"] = 1 # one integer, but assume float for simplicity
+        elif type == "bspline":
+            summary[joint]["num_data_time"] = compressed_quats[joint]["data_time"].shape[0]
 
-        elif compression_type == "singular":
-            value = compressed_joint["value"]
-            num_frame = compressed_joint["num_frame"]
+        summary[joint]["total_used_floats"] = (
+              4 * summary[joint]["num_control_pts"]
+            + summary[joint]["num_knots"]
+            + summary[joint]["num_data_time"]
+        )
 
-            spl = StationarySpline(singularity=value)
-            decom_quats[joint_name] = spl(np.arange(num_frame))
+        summary[joint]["total_used_floats_raw"] = 4 * raw_quats[joint].shape[0] 
+        summary[joint]["compression_ratio"] = summary[joint]["total_used_floats_raw"] / summary[joint]["total_used_floats"] 
 
-        else:
-            raise ValueError(f"Unknow compression_type \"{compression_type}\"")
-
-    return decom_quats
+    return pd.DataFrame(summary).T

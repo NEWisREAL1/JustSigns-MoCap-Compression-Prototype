@@ -114,6 +114,7 @@ def pack_frame_to_matrix(frame_dict):
 
 
 def prepare_clip(clip, clean_names=True):
+    """Returns (parsed_clip, clip_name, extracted_quats)"""
     clip = parse_clip(clip, clean_names=clean_names)
     anim = clip["animationClip"]
     clip_name = anim["name"]

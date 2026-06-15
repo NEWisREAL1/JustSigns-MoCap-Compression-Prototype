@@ -88,14 +88,14 @@ LEFT_ARM_JOINTS = [
     'arm_twistl', 'forearm_twistl',    
 ]
 
-CORE_BODY = [
+CORE_BODY_JOINTS = [
     'rootx',
     'spine_01x', 'spine_02x', 
     'neckx', 'headx',
     'spine_03x',
 ]
 
-LOWER_BODY = [
+LOWER_BODY_JOINTS = [
     'thigh_stretchl', 'leg_stretchl', 'footl',
     'thigh_stretchr', 'leg_stretchr', 'footr',
     'thigh_twistl', 'toes_01l', 'leg_twistl',
