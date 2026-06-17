@@ -9,8 +9,8 @@ wheels/
 # Virtual environments
 .venv
 
-data/
-out/
-test/
-archive/
-model/
+/data/
+/out/
+/test/
+/archive/
+/model/
