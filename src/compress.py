@@ -111,34 +111,3 @@ class MoCapCompressor:
             decompressed_clip_quats[joint] = quats
         
         return decompressed_clip_quats
-
-
-def summarize_compression_info(raw_quats, compressed_quats, info):
-    summary = {}
-    joints = info["error"].keys()
-
-    for joint in joints:
-        summary[joint] = {}
-
-        type = compressed_quats[joint]["compression_type"]
-        summary[joint]["compression_type"] = type
-        summary[joint]["final_error"]      = info["error"][joint][-1]
-        summary[joint]["num_iterations"]   = len(info["error"][joint])
-        summary[joint]["num_control_pts"]  = compressed_quats[joint]["fitted_spl"].control_pts.shape[0]
-        summary[joint]["num_knots"]        = compressed_quats[joint]["fitted_spl"].knot_vector.shape[0]
-
-        if type == "singular":
-            summary[joint]["num_data_time"] = 1 # one integer, but assume float for simplicity
-        elif type == "bspline":
-            summary[joint]["num_data_time"] = compressed_quats[joint]["data_time"].shape[0]
-
-        summary[joint]["total_used_floats"] = (
-              4 * summary[joint]["num_control_pts"]
-            + summary[joint]["num_knots"]
-            + summary[joint]["num_data_time"]
-        )
-
-        summary[joint]["total_used_floats_raw"] = 4 * raw_quats[joint].shape[0] 
-        summary[joint]["compression_ratio"] = summary[joint]["total_used_floats_raw"] / summary[joint]["total_used_floats"] 
-
-    return pd.DataFrame(summary).T

@@ -60,7 +60,7 @@ class LSPIASolver:
         ):
         # INITIALIZING
         self.data_time = self.param.parameterize(data_pts, self.space)
-        self.knot_vector = self.knot_topo.generate_initial(self.data_time, self.degree, self.init.num_initial_control_pts)
+        self.knot_vector = self.knot_topo.generate_initial(data_pts, self.data_time, self.degree, self.init.num_initial_control_pts, self.space)
         self.control_pts = self.init.initialize_control_pts(data_pts, self.data_time, self.knot_vector)
 
         self._build_matrices()
@@ -83,7 +83,7 @@ class LSPIASolver:
             summarized_err = new_summarized_err 
             
             # MACRO STEP
-            if delta_err <= 1e-4 and macro_step != 0 and i % macro_step == 0:
+            if delta_err <= 1e-4 and i != 0 and i % macro_step == 0:
                 self._macro_step(data_pts, global_err)
 
             # VERBOSITY
