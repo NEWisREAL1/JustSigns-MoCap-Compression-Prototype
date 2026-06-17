@@ -1,15 +1,16 @@
 import numpy as np
 import plotly.graph_objects as go
 
-from src.model.skeleton import KinematicsSkeleton
+# from src.model.skeleton import KinematicsSkeleton
 
 
-class AnimatedPlotter:
-    def __init__(self, title="MoCap Animation", width=900, height=800):
+class AnimatedSkeletonsPlotter:
+    def __init__(self, title="MoCap Animation", width=900, height=500, aspectmode="data"):
         self.fig = go.Figure()
         self.title = title
         self.width = width
         self.height = height
+        self.aspectmode = aspectmode
         
         # Store state for multiple skeletons to sync frames later
         self.skeletons_data = []
@@ -40,9 +41,11 @@ class AnimatedPlotter:
             z_lines.extend([positions[p, 2], positions[j, 2], None])
         return x_lines, y_lines, z_lines
 
-    def add_skeleton(self, anim_rotations, hierarchy, bind_offsets, name=None, joints_names=None, root_positions=None, stride=1):
-        fk = KinematicsSkeleton(hierarchy, bind_offsets)
-        global_positions, _ = fk.forward_kinematics(anim_rotations, root_positions)
+    def add_skeleton(self, anim_rotations, kinematics_skeleton, name=None, offset=None, stride=1):
+        global_positions, _ = kinematics_skeleton.forward_kinematics(anim_rotations)
+
+        if offset is not None:
+            global_positions += np.asarray(offset)
         
         global_positions = global_positions[::stride]
         num_frames = global_positions.shape[0]
@@ -67,19 +70,19 @@ class AnimatedPlotter:
         # Store for synchronous frame rendering later
         self.skeletons_data.append({
             'positions': global_positions,
-            'parents': hierarchy
+            'parents': kinematics_skeleton.parents
         })
         
         # Plot initial (frame 0) traces
         pos_0 = global_positions[0]
-        x_lines, y_lines, z_lines = self._build_lines(pos_0, hierarchy)
+        x_lines, y_lines, z_lines = self._build_lines(pos_0, kinematics_skeleton.parents)
         
         # Base Bones
         self.fig.add_trace(go.Scatter3d(
             x=x_lines, y=z_lines, z=y_lines,
             mode='lines',
-            line=dict(color=base_color, width=6),
-            name=f"{name} (bones)" if name is not None else "bones",
+            line=dict(color=base_color, width=10),
+            name=f"{name} (Bones)" if name is not None else "Bones",
             hoverinfo="skip",
         ))
         
@@ -87,9 +90,10 @@ class AnimatedPlotter:
         self.fig.add_trace(go.Scatter3d(
             x=pos_0[:, 0], y=pos_0[:, 2], z=pos_0[:, 1],
             mode='markers',
-            marker=dict(size=3, color=base_color, line=dict(color='black', width=1)),
-            name=f"{name} (joints)" if name is not None else "joints",
-            text=joints_names,
+            marker=dict(size=4, color="black"),
+            # name=f"{name} (Joints)" if name is not None else "Joints",
+            showlegend=False,
+            text=kinematics_skeleton.joint_names,
         ))
 
     def _build_all_frames(self):
@@ -131,10 +135,11 @@ class AnimatedPlotter:
                 xaxis=dict(range=self.bounds['x'], autorange=False),
                 yaxis=dict(range=self.bounds['y'], autorange=False),
                 zaxis=dict(range=self.bounds['z'], autorange=False),
-                aspectmode='data',
+                aspectmode=self.aspectmode,
             ),
             scene_camera=dict(
-                eye=dict(x=1.6, y=1.6, z=1.6),
+                eye=dict(x=0, y=1.25, z=0.5),
+                center=dict(x=0, y=0, z=0.5),
             ),
             updatemenus=[dict(
                 type="buttons",

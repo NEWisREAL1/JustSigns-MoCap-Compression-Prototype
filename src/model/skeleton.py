@@ -2,10 +2,12 @@ import numpy as np
 
 
 class KinematicsSkeleton:
-    def __init__(self, parents, offsets):
-        self.num_joints = len(parents)
-        self.parents = np.array(parents, dtype=np.int32)
-        self.offsets = np.atleast_2d(offsets).astype(np.float64)
+    def __init__(self, joint_names, parents, bind_translations, bind_rotations):
+        self.joint_names = joint_names
+        self.parents = parents
+        self.bind_translations = bind_translations
+        self.bind_rotations = bind_rotations
+        self.num_joints = len(joint_names)
 
     def forward_kinematics(self, anim_rotations, root_positions=None):
         m = anim_rotations.shape[0]
@@ -21,14 +23,14 @@ class KinematicsSkeleton:
             global_positions[:, 0, :] = root_positions
         else:
             # FIX: Ensure root uses its bind translation, not just [0,0,0]
-            global_positions[:, 0, :] = self.offsets[0]
+            global_positions[:, 0, :] = self.bind_translations[0]
 
         for j in range(1, J):
             p = self.parents[j]
             # Since anim_rotations are absolute local rotations, we just multiply by parent global
             global_rotations[:, j, :] = self._quat_mult_batch(global_rotations[:, p, :], anim_rotations[:, j, :])
             
-            rotated_offset = self._rotate_vector_batch(global_rotations[:, p, :], self.offsets[j])
+            rotated_offset = self._rotate_vector_batch(global_rotations[:, p, :], self.bind_translations[j])
             global_positions[:, j, :] = global_positions[:, p, :] + rotated_offset
             
         return global_positions, global_rotations
