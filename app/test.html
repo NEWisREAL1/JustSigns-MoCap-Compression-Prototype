@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Three.js MoCap Visualizer</title>
+    <style>body { margin: 0; overflow: hidden; background: #222; }</style>
+</head>
+<body>
+    <script type="module">
+        import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.module.js';
+
+        // ==========================================
+        // 1. Scene Setup
+        // ==========================================
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+        camera.position.set(0, 30, 50);
+        camera.lookAt(0, 10, 0);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        // Add some basic lighting
+        scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+        const dirLight = new THREE.DirectionalLight(0xffffff, 1);
+        dirLight.position.set(10, 20, 10);
+        scene.add(dirLight);
+
+        // ==========================================
+        // 2. Dummy Character Construction
+        // ==========================================
+        const rootGroup = new THREE.Group();
+        scene.add(rootGroup);
+
+        // A. Create Bones
+        const rootBone = new THREE.Bone();
+        rootBone.name = "Root";
+        rootBone.position.y = 0;
+
+        const shoulderBone = new THREE.Bone();
+        shoulderBone.name = "Shoulder";
+        shoulderBone.position.y = 15; // 15 units above Root
+
+        const elbowBone = new THREE.Bone();
+        elbowBone.name = "Elbow";
+        elbowBone.position.x = 10; // 10 units right of Shoulder
+
+        rootBone.add(shoulderBone);
+        shoulderBone.add(elbowBone);
+        rootGroup.add(rootBone);
+
+        // SkeletonHelper visualizes the bones automatically!
+        const skeletonHelper = new THREE.SkeletonHelper(rootGroup);
+        scene.add(skeletonHelper);
+
+        // B. Create a Mesh with a Blendshape (Morph Target)
+        // We'll create a box that stretches when the blendshape actuates
+        const geometry = new THREE.BoxGeometry(4, 4, 4);
+        
+        // Define the target shape (stretched upwards)
+        const positionAttribute = geometry.attributes.position;
+        const targetPositions = [];
+        for (let i = 0; i < positionAttribute.count; i++) {
+            let x = positionAttribute.getX(i);
+            let y = positionAttribute.getY(i);
+            let z = positionAttribute.getZ(i);
+            // Stretch the top vertices upwards
+            if (y > 0) y += 5; 
+            targetPositions.push(x, y, z);
+        }
+        
+        geometry.morphAttributes.position = [];
+        geometry.morphAttributes.position[0] = new THREE.Float32BufferAttribute(targetPositions, 3);
+        
+        const material = new THREE.MeshStandardMaterial({ color: 0x0096ff, wireframe: true });
+        const faceMesh = new THREE.Mesh(geometry, material);
+        faceMesh.name = "Alex_face";
+        faceMesh.position.set(-10, 10, 0);
+        
+        // Register the morph target dictionary so we can animate it by name
+        faceMesh.morphTargetDictionary = { "eyebrow_raise": 0 };
+        faceMesh.morphTargetInfluences = [ 0 ];
+        rootGroup.add(faceMesh);
+
+
+        // ==========================================
+        // 3. The MoCap Data Compiler
+        // ==========================================
+        
+        // DUMMY DATA: Notice the highly irregular timings
+        const mocapData = {
+            duration: 4.0, // Total clip length in seconds
+            joints: {
+                "Shoulder": {
+                    times: [0.0, 0.5, 1.2, 3.8, 4.0], // Irregular absolute times
+                    // Flat arrays [x, y, z, w,  x, y, z, w...]
+                    values: [
+                        0, 0, 0, 1,           
+                        0, 0, 0.707, 0.707,   
+                        0, 0, 1, 0,           
+                        0, 0, 0.707, 0.707,   
+                        0, 0, 0, 1            
+                    ]
+                }
+            },
+            blendshapes: {
+                // Name matches MeshName.morphTargetInfluences[index]
+                "Alex_face.morphTargetInfluences[0]": {
+                    // Massive time gaps (decimated data)
+                    times: [0.0, 1.0, 1.1, 1.2, 3.5, 4.0], 
+                    values: [0.0, 0.0, 1.0, 0.0, 0.0, 0.0]
+                }
+            }
+        };
+
+        const tracks = [];
+
+        // 1. Parse Quaternion Tracks
+        for (const [jointName, data] of Object.entries(mocapData.joints)) {
+            // Target name format: "BoneName.quaternion"
+            const trackName = `${jointName}.quaternion`;
+            const track = new THREE.QuaternionKeyframeTrack(trackName, data.times, data.values);
+            tracks.push(track);
+        }
+
+        // 2. Parse Blendshape (Number) Tracks
+        for (const [shapeTarget, data] of Object.entries(mocapData.blendshapes)) {
+            // Target name format: "MeshName.morphTargetInfluences[index]"
+            // Or "MeshName.morphTargetInfluences[morphName]"
+            const track = new THREE.NumberKeyframeTrack(shapeTarget, data.times, data.values);
+            tracks.push(track);
+        }
+
+        // 3. Compile the Clip
+        const clip = new THREE.AnimationClip("MoCapSequence", mocapData.duration, tracks);
+
+
+        // ==========================================
+        // 4. Playback Engine
+        // ==========================================
+        const mixer = new THREE.AnimationMixer(rootGroup);
+        const action = mixer.clipAction(clip);
+        action.play();
+
+        const clock = new THREE.Clock();
+
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            // The mixer automatically figures out exactly where we are in the irregular 
+            // time arrays and smoothly interpolates the quaternions and numbers!
+            const delta = clock.getDelta();
+            mixer.update(delta);
+
+            renderer.render(scene, camera);
+        }
+
+        animate();
+    </script>
+</body>
+</html>

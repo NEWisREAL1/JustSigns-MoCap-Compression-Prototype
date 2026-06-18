@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>MoCap Multi-Clip Visualizer</title>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #1a1a1a; color: white; font-family: sans-serif; }
+        
+        /* Floating UI Panel */
+        #ui-panel {
+            position: absolute; top: 15px; left: 15px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px; border-radius: 8px; border: 1px solid #444;
+            pointer-events: auto; z-index: 100;
+        }
+        #ui-panel h3 { margin: 0 0 10px 0; font-size: 16px; color: #00aaff; }
+        .toggle-row { margin-bottom: 8px; display: flex; align-items: center; }
+        .toggle-row input { margin-right: 8px; cursor: pointer; }
+        
+        #loading { position: absolute; top: 50%; width: 100%; text-align: center; font-size: 24px; pointer-events: none; }
+        #error-log { position: absolute; bottom: 15px; left: 15px; color: #ff5555; font-size: 14px; pointer-events: none; }
+    </style>
+</head>
+<body>
+    <div id="ui-panel">
+        <h3>View Options</h3>
+        <div class="toggle-row">
+            <input type="checkbox" id="toggle-meshes" checked>
+            <label for="toggle-meshes">Show Meshes (Front Row)</label>
+        </div>
+        <div class="toggle-row">
+            <input type="checkbox" id="toggle-skeletons" checked>
+            <label for="toggle-skeletons">Show Skeletons (Back Row)</label>
+        </div>
+    </div>
+
+    <div id="loading">Loading assets...</div>
+    <div id="error-log"></div>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.module.js",
+                "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.158.0/examples/jsm/"
+            }
+        }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
+
+        // ==========================================
+        // 1. CONFIGURATION
+        // Add as many clips here as you want to compare!
+        // ==========================================
+        const CONFIG = {
+            modelUrl: '../model/Alex_Rig_v2.4_rokoko_wface_nov30.glb',
+            spacingX: 1.0, // Horizontal distance between clips
+            spacingZ: 2.0, // Depth distance between Meshes and Skeletons
+            clips: [
+                { name: 'original', url: '../data/json/clip_73.json' },
+                { name: 'quantized', url: '../out/quantize/dequantize_clip_73.json' },
+            ]
+        };
+
+        // ==========================================
+        // 2. Scene & Camera Setup
+        // ==========================================
+        const scene = new THREE.Scene();
+        scene.fog = new THREE.Fog(0x1a1a1a, 10, 100);
+
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+        
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.shadowMap.enabled = true;
+        document.body.appendChild(renderer.domElement);
+
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.target.set(0, 1, 0);
+
+        // Lighting & Environment
+        scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+        const dirLight = new THREE.DirectionalLight(0xffffff, 2);
+        dirLight.position.set(5, 10, 5);
+        // dirLight.castShadow = true;
+        scene.add(dirLight);
+
+        const gridHelper = new THREE.GridHelper(50, 50, 0x888888, 0x333333);
+        scene.add(gridHelper);
+
+        // Groups for UI Toggling
+        const meshGroup = new THREE.Group();
+        const skeletonGroup = new THREE.Group();
+        scene.add(meshGroup);
+        scene.add(skeletonGroup);
+
+        const clock = new THREE.Clock();
+        const mixers = [];
+
+        // ==========================================
+        // 3. Initialization & Loading
+        // ==========================================
+        async function init() {
+            try {
+                // Load base model
+                const gltf = await loadGLB(CONFIG.modelUrl);
+
+                // Load all clips in parallel, catching errors gracefully
+                const loadedClips = await Promise.all(
+                    CONFIG.clips.map(async (clipInfo) => {
+                        try {
+                            const data = await fetchJSON(clipInfo.url);
+                            return { name: clipInfo.name, data: data };
+                        } catch(e) {
+                            logError(`Failed to load: ${clipInfo.url}`);
+                            return null;
+                        }
+                    })
+                );
+
+                // Filter out clips that failed to load
+                const activeClips = loadedClips.filter(c => c !== null);
+
+                if (activeClips.length === 0) {
+                    document.getElementById('loading').innerText = "No animation clips found.";
+                    return;
+                }
+
+                document.getElementById('loading').style.display = 'none';
+
+                // Dynamically build the grid
+                buildGrid(gltf.scene, activeClips);
+
+                // Dynamically adjust camera distance based on how many columns we have
+                camera.position.set(0, 2, activeClips.length * 1.5 + 4);
+                controls.update();
+
+                animate();
+            } catch (error) {
+                console.error("Initialization failed:", error);
+                document.getElementById('loading').innerText = "Failed to load base model.";
+            }
+        }
+
+        // ==========================================
+        // 4. Grid Builder System
+        // ==========================================
+        function buildGrid(baseScene, clipsData) {
+            const numColumns = clipsData.length;
+
+            clipsData.forEach((clipObj, index) => {
+                // Center the grid on X axis
+                const xPos = (index - (numColumns - 1) / 2) * CONFIG.spacingX;
+                
+                // Compile the JSON to a Three.js Clip
+                const threeClip = compileAnimationClip(clipObj.data);
+
+                // ---- Front Row: Meshes ----
+                const meshClone = setupMeshModel(baseScene);
+                meshClone.position.set(xPos, 0, 0); // Z = 0
+                meshGroup.add(meshClone);
+                attachAnimation(meshClone, threeClip);
+
+                // ---- Back Row: Skeletons ----
+                const skelClone = setupSkeletonModel(baseScene);
+                skelClone.position.set(xPos / 2, 0, -CONFIG.spacingZ); // Pushed back on Z axis
+                skeletonGroup.add(skelClone);
+                attachAnimation(skelClone, threeClip);
+
+                // ---- 3D Label Sprite ----
+                const label = createTextSprite(clipObj.name);
+                label.position.set(xPos, 2.3, 0); // Hover above the mesh head
+                scene.add(label);
+            });
+        }
+
+        // ==========================================
+        // 5. Asset Processors
+        // ==========================================
+        function loadGLB(url) {
+            return new Promise((resolve, reject) => {
+                const loader = new GLTFLoader();
+                loader.load(url, resolve, undefined, reject);
+            });
+        }
+
+        async function fetchJSON(url) {
+            const response = await fetch(url);
+            if (!response.ok) throw new Error(response.statusText);
+            return await response.json();
+        }
+
+        function setupSkeletonModel(baseScene) {
+            const clone = SkeletonUtils.clone(baseScene);
+            clone.traverse((child) => { if (child.isMesh) child.visible = false; });
+            const skeletonHelper = new THREE.SkeletonHelper(clone);
+            skeletonHelper.material.linewidth = 3; 
+            clone.add(skeletonHelper); // Add helper directly to clone so they move together
+            return clone;
+        }
+
+        function setupMeshModel(baseScene) {
+            const clone = SkeletonUtils.clone(baseScene);
+            clone.traverse((child) => {
+                if (child.isMesh) {
+                    child.castShadow = true;
+                    child.receiveShadow = true;
+                }
+            });
+            return clone;
+        }
+
+        function compileAnimationClip(jsonData) {
+            const animData = jsonData.animationClip;
+            const tracks = [];
+
+            animData.tracks.forEach(trackDef => {
+                if (trackDef.type === 'quaternion') {
+                    tracks.push(new THREE.QuaternionKeyframeTrack(trackDef.name, trackDef.times, trackDef.values));
+                } else if (trackDef.type === 'number') {
+                    tracks.push(new THREE.NumberKeyframeTrack(trackDef.name, trackDef.times, trackDef.values));
+                } else if (trackDef.type === 'vector' || trackDef.type === 'vector3') {
+                    tracks.push(new THREE.VectorKeyframeTrack(trackDef.name, trackDef.times, trackDef.values));
+                }
+            });
+
+            return new THREE.AnimationClip(animData.name, animData.duration, tracks);
+        }
+
+        function attachAnimation(model, clip) {
+            const mixer = new THREE.AnimationMixer(model);
+            const action = mixer.clipAction(clip);
+            action.play();
+            mixers.push(mixer);
+        }
+
+        function createTextSprite(message) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 512; canvas.height = 128;
+            const ctx = canvas.getContext('2d');
+            
+            // Background
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+            ctx.roundRect(0, 0, canvas.width, canvas.height, 20);
+            ctx.fill();
+            
+            // Text
+            ctx.font = 'bold 48px sans-serif';
+            ctx.fillStyle = '#00aaff';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(message, canvas.width / 2, canvas.height / 2);
+            
+            const texture = new THREE.CanvasTexture(canvas);
+            const spriteMaterial = new THREE.SpriteMaterial({ map: texture });
+            const sprite = new THREE.Sprite(spriteMaterial);
+            sprite.scale.set(1.5, 0.375, 1);
+            return sprite;
+        }
+
+        function logError(msg) {
+            const log = document.getElementById('error-log');
+            log.innerHTML += msg + '<br/>';
+        }
+
+        // ==========================================
+        // 6. UI Listeners & Render Loop
+        // ==========================================
+        document.getElementById('toggle-meshes').addEventListener('change', (e) => {
+            meshGroup.visible = e.target.checked;
+        });
+
+        document.getElementById('toggle-skeletons').addEventListener('change', (e) => {
+            skeletonGroup.visible = e.target.checked;
+        });
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const delta = clock.getDelta();
+            mixers.forEach(mixer => mixer.update(delta));
+            renderer.render(scene, camera);
+        }
+
+        init();
+    </script>
+</body>
+</html>
