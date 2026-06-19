@@ -1,7 +1,10 @@
+import base64
 import json
 from copy import deepcopy
 
 import numpy as np
+
+from src.model.alex import get_alex_skeleton
 
 
 def load_clip(path):
@@ -102,7 +105,7 @@ def unpack_anim_dict_to_tracks(names, **dicts):
     return res
 
 
-def pack_anim_to_array(clip, kinematics_skeleton, num_frames=None, includes_blendshapes=False, clean_names=True, input_as_anim_dict=False):
+def pack_anim_to_array(clip, kinematics_skeleton=get_alex_skeleton(), num_frames=None, includes_blendshapes=False, clean_names=True, input_as_anim_dict=False):
     """
     Packs a dictionary of named joint animations into a 3D NumPy array.\n
     If a joint is missing, it seamlessly falls back to the static bind rotation.
@@ -140,3 +143,13 @@ def extract_tracks(clip, types=None):
     if type(types) is not list:
         types = [types]
     return [track for track in all_tracks if track["type"] in types]
+
+
+def pack_b64(arr):
+    """Converts numpy array to bytes, then to base64 ASCII string"""
+    return base64.b64encode(arr.tobytes()).decode('ascii')
+
+
+def unpack_b64(b64_str, base_type):
+    """Converts base64 ASCII string back to numpy array of the base type"""
+    return np.frombuffer(base64.b64decode(b64_str), dtype=base_type)

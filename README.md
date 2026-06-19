@@ -1,5 +1,7 @@
 # Motion Capture Data Compression for JustSings Project
 
+*note: this README is still incompelete.*
+
 Fitting the joints motion with splines to get parametric representation of the motion with less data to store (sequences of vectors -> sets of control points, time-parameters, knot vectors, etc.). Experimental result shows that further/more advance compression techniques should be apply to handle the complicated high frequency motion in the JustSigns dataset (as noted below).
 
 # Current Approach — Hierarchical Approximation and High-Frequency Residuals Compression (HA-HFR Compression)
