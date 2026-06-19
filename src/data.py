@@ -6,7 +6,7 @@ import numpy as np
 
 def load_clip(path):
     """Load a full json clip."""
-    with open(path, "r") as file:
+    with open(path, "r", encoding="utf-8") as file:
         data = json.load(file)
     return data
 
@@ -30,7 +30,7 @@ def save_clip(data, path):
             return super().default(obj)
 
     with open(path, "w", encoding="utf-8") as file:
-        json.dump(data, file, cls=NumpyEncoder, indent=4, )
+        json.dump(data, file, cls=NumpyEncoder, indent=4, ensure_ascii=False)
 
 
 def print_json_structure(json_dict, level=0, indent=4):
