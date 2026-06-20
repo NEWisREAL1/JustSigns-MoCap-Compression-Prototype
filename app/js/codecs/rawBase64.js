@@ -4,10 +4,10 @@ export function canDecodeTrack(type) {
     return type.endsWith('_raw_b64');
 }
 
-export function decodeTrack(trackDef) {
+export function decodeTrack(trackDef, globalAttrs) {
     const baseType = normalizeTrackType(trackDef.type);
-    const times = decodeBase64ToArray(trackDef.times, Float64Array);
-    const values = decodeBase64ToArray(trackDef.values, Float64Array);
+    const times = decodeBase64ToArray(trackDef.times_b64, Float64Array);
+    const values = decodeBase64ToArray(trackDef.values_b64, Float64Array);
     return buildTrack(baseType, trackDef.name, times, values);
 }
 

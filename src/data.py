@@ -137,12 +137,22 @@ def pack_anim_to_array(clip, kinematics_skeleton=get_alex_skeleton(), num_frames
     return anim_rotations
 
 
-def extract_tracks(clip, types=None):
-    """Extract a list of tracks with given type out of a clip."""
-    all_tracks = clip["animationClip"]["tracks"]
-    if type(types) is not list:
-        types = [types]
-    return [track for track in all_tracks if track["type"] in types]
+def extract_tracks(tracks, type):
+    """Extract only tracks that only contain type keyword from a list of tracks"""
+    res = []
+    for track in tracks:
+        if type in track["type"]:
+            res.append(track)
+    return res
+
+
+def get_joint_idx(clip, name):
+    """Get the index of track corresponding for given joint name"""
+    tracks = clip["animationClip"]["tracks"]
+    for i, track in enumerate(tracks):
+        if name in track["name"]:
+            return i
+    return None
 
 
 def pack_b64(arr):

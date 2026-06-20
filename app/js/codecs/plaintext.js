@@ -6,7 +6,7 @@ export function canDecodeTrack(type) {
     return LEGACY_TYPES.has(type);
 }
 
-export function decodeTrack(trackDef) {
+export function decodeTrack(trackDef, globalAttrs) {
     return buildTrack(
         trackDef.type,
         trackDef.name,

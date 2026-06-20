@@ -4,25 +4,46 @@ from src.cagd.splines import BSpline
 
 
 class LSPIASolver:
-    def __init__(self, degree=2, initial_num_cps=20, centripetal_power=0.5):
+    def __init__(
+        self, 
+        degree=2, initial_num_cps=20, centripetal_power=0.5,
+        max_iters=1000, convergence_iters=25,
+        ):
         self.degree = degree
         self.initial_num_cps = initial_num_cps
         self.centripetal_power = centripetal_power
+        self.max_iters = max_iters
+        self.convergence_iters = convergence_iters
 
 
-    def fit(self, data_pts, max_iters=1000):
-        data_times  = self._init_data_times(data_pts)
+    def fit(self, data_pts):
+        # data_times  = self._init_data_times(data_pts)
+        data_times = np.linspace(0, 1, data_pts.shape[0])
         knot_vector = self._init_knot_vector(data_times)
+        # knot_vector = BSpline.generate_uniform_open_knots(self.degree, self.initial_num_cps)
         control_pts = self._init_control_pts(data_pts, data_times, knot_vector)
 
         collocation_mat, weight_mat = self._build_matrices(data_times, knot_vector, control_pts)
 
-        for i in range(max_iters):
+        best_err = np.inf
+        iter_w_no_improv = 0
+
+        for i in range(self.max_iters):
             approx_pts    = collocation_mat @ control_pts
             error_vector  = data_pts - approx_pts
             local_updates = weight_mat @ error_vector
 
             control_pts = control_pts + (1) * local_updates
+
+            max_point_err = np.max(np.linalg.norm(error_vector, axis=1))
+            if max_point_err < best_err - 1e-8:
+                best_err = max_point_err
+                iter_w_no_improv = 0
+            else:
+                iter_w_no_improv += 1
+            
+            if iter_w_no_improv >= self.convergence_iters:
+                break
 
         return BSpline(self.degree, control_pts, knot_vector), data_times
 
@@ -42,7 +63,7 @@ class LSPIASolver:
 
     def _init_knot_vector(self, data_times):
         """Time-averaging knot initialization"""
-        knot_vector = self.generate_uniform_open_knots(self.initial_num_cps)
+        knot_vector = BSpline.generate_uniform_open_knots(self.degree, self.initial_num_cps)
         num_internal = self.initial_num_cps - self.degree - 1
         d = data_times.shape[0] / float(self.initial_num_cps - self.degree)
 
@@ -71,17 +92,6 @@ class LSPIASolver:
 
 
     # ----- Utils ----- #
-
-    def generate_uniform_open_knots(self, num_cps):
-        num_internal_knots = num_cps - self.degree - 1
-        num_external_knots = self.degree + 1
-
-        head_knots = np.repeat(0, num_external_knots - 1)
-        tail_knots = np.repeat(1, num_external_knots - 1)
-        internal_knots = np.linspace(0, 1, num_internal_knots + 2)
-
-        return np.concatenate([head_knots, internal_knots, tail_knots])
-
 
     def _build_matrices(self, data_times, knot_vector, control_pts):
         collocation_mat = np.array([

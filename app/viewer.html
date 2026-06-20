@@ -5,19 +5,26 @@
     <title>MoCap Multi-Clip Visualizer</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #1a1a1a; color: white; font-family: sans-serif; }
-        #ui-panel { position: absolute; top: 15px; left: 15px; background: rgba(0,0,0,0.7); padding: 15px; border-radius: 8px; border: 1px solid #444; z-index: 100; }
-        #ui-panel h3 { margin: 0 0 10px 0; font-size: 16px; color: #00aaff; }
-        .toggle-row { margin-bottom: 8px; display: flex; align-items: center; }
+        #rig-panel { position: absolute; top: 15px; left: 15px; max-height: calc(100vh - 30px); overflow-y: auto; background: rgba(0,0,0,0.7); padding: 15px; border-radius: 8px; border: 1px solid #444; z-index: 100; font-size: 13px; }
+        .rig-panel-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+        .rig-panel-header h3 { margin: 0; font-size: 16px; color: #00aaff; }
+        .rig-panel-collapse { background: #2a2a2a; color: #00aaff; border: 1px solid #444; border-radius: 4px; width: 22px; height: 22px; line-height: 1; cursor: pointer; font-size: 14px; }
+        .rig-panel-collapse:hover { background: #383838; }
+        .rig-row { margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid #333; }
+        .rig-row:last-child { border-bottom: none; margin-bottom: 0; }
+        .rig-row-header { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+        .rig-row-name { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .rig-mode-toggle { background: #2a2a2a; color: #00aaff; border: 1px solid #444; border-radius: 4px; padding: 2px 8px; cursor: pointer; font-size: 12px; }
+        .rig-mode-toggle:hover { background: #383838; }
+        .rig-row-position { display: flex; gap: 6px; }
+        .rig-pos-field { display: flex; align-items: center; gap: 4px; color: #aaa; font-size: 11px; }
+        .rig-pos-field input { width: 52px; background: #2a2a2a; color: white; border: 1px solid #444; border-radius: 4px; padding: 2px 4px; }
         #loading { position: absolute; top: 50%; width: 100%; text-align: center; font-size: 24px; pointer-events: none; }
         #error-log { position: absolute; bottom: 15px; left: 15px; color: #ff5555; font-size: 14px; }
     </style>
 </head>
 <body>
-    <div id="ui-panel">
-        <h3>View Options</h3>
-        <div class="toggle-row"><input type="checkbox" id="toggle-meshes" checked><label>Show Meshes</label></div>
-        <div class="toggle-row"><input type="checkbox" id="toggle-skeletons" unchecked><label>Show Skeletons</label></div>
-    </div>
+    <div id="rig-panel"></div>
     <div id="loading">Loading assets...</div>
     <div id="error-log"></div>
 

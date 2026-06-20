@@ -111,3 +111,16 @@ class BSpline:
             for j in range(num_cps)
         ]).T
 
+
+    @staticmethod
+    
+    def generate_uniform_open_knots(degree, num_cps):
+        num_internal_knots = num_cps - degree - 1
+        num_external_knots = degree + 1
+
+        head_knots = np.repeat(0, num_external_knots - 1)
+        tail_knots = np.repeat(1, num_external_knots - 1)
+        internal_knots = np.linspace(0, 1, num_internal_knots + 2)
+
+        return np.concatenate([head_knots, internal_knots, tail_knots])
+

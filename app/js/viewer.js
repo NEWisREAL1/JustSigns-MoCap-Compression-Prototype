@@ -1,18 +1,21 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 
 import { compileAnimationClip } from './codec.js';
+import { createRig } from './sceneRig.js';
+import { buildControlPanel } from './controlPanel.js';
 
 const CONFIG = {
     modelUrl: '../model/Alex_Rig_v2.4_rokoko_wface_nov30.glb',
-    spacingX: 1.5,
-    spacingZ: 2.0,
+    spacingX: 1.0, // fallback spacing for clips that don't set an explicit position.x
     clips: [
-        { name: 'Original', url: '../data/json/clip_73.json' },
-        { name: 'RawBase64', url: '../out/raw_base64/clip_rb64_73.json' },
-        { name: 'QuantizedB64', url: '../out/quantize/clip_quan_73.json' }
+        // Per-clip overrides: `position: { x, y, z }`, `mode: 'mesh' | 'skeleton'`,
+        // `visible: false`, `label: { fontSize, background, color, ... }`.
+        { name: '35 Original', url: '../data/json/clip_35.json' },
+        { name: '35 BSpline' , url: '../out/bspline/clip_bspl_35.json' },
+        { name: '47 Original', url: '../data/json/clip_47.json' },
+        { name: '47 BSpline' , url: '../out/bspline/clip_bspl_47.json' },
     ]
 };
 
@@ -33,31 +36,18 @@ dirLight.position.set(5, 10, 5);
 scene.add(dirLight);
 scene.add(new THREE.GridHelper(50, 50, 0x888888, 0x333333));
 
-const meshGroup = new THREE.Group();
-const skeletonGroup = new THREE.Group();
-skeletonGroup.visible = false
-scene.add(meshGroup);
-scene.add(skeletonGroup);
-
 const clock = new THREE.Clock();
-const mixers = [];
+const rigs = [];
 
 const loadingElement = document.getElementById('loading');
 const errorLogElement = document.getElementById('error-log');
-const meshToggle = document.getElementById('toggle-meshes');
-const skeletonToggle = document.getElementById('toggle-skeletons');
-
-function attachAnimation(model, clip) {
-    const mixer = new THREE.AnimationMixer(model);
-    mixer.clipAction(clip).play();
-    mixers.push(mixer);
-}
+const controlPanelElement = document.getElementById('rig-panel');
 
 async function loadClipFile(info) {
     try {
         const response = await fetch(info.url);
         if (!response.ok) throw new Error(response.statusText || String(response.status));
-        return { name: info.name, data: await response.json() };
+        return { config: info, data: await response.json() };
     } catch {
         if (errorLogElement) {
             errorLogElement.innerHTML += `Failed: ${info.url}<br/>`;
@@ -78,43 +68,27 @@ async function init() {
         }
 
         activeClips.forEach((clipObj, index) => {
-            const xPos = (index - (activeClips.length - 1) / 2) * CONFIG.spacingX;
+            const { config } = clipObj;
+            const defaultX = (index - (activeClips.length - 1) / 2) * CONFIG.spacingX;
+            const position = { x: defaultX, y: 0, z: 0, ...config.position };
+
             const threeClip = compileAnimationClip(clipObj.data);
-
-            const meshClone = SkeletonUtils.clone(gltf.scene);
-            meshClone.position.set(xPos, 0, 0);
-            meshGroup.add(meshClone);
-            attachAnimation(meshClone, threeClip);
-
-            const skelClone = SkeletonUtils.clone(gltf.scene);
-            skelClone.traverse(node => {
-                if (node.isMesh) node.visible = false;
+            const rig = createRig(gltf.scene, threeClip, {
+                name: config.name,
+                position,
+                mode: config.mode,
+                visible: config.visible,
+                label: config.label,
             });
-            const helper = new THREE.SkeletonHelper(skelClone);
-            helper.material.linewidth = 3;
-            skelClone.add(helper);
-            skelClone.position.set(xPos / 2, 0, -CONFIG.spacingZ);
-            skeletonGroup.add(skelClone);
-            attachAnimation(skelClone, threeClip);
 
-            const canvas = document.createElement('canvas');
-            canvas.width = 512;
-            canvas.height = 128;
-            const ctx = canvas.getContext('2d');
-            ctx.fillStyle = 'rgba(0,0,0,0.6)';
-            ctx.roundRect(0, 0, 512, 128, 20);
-            ctx.fill();
-            ctx.font = 'bold 36px sans-serif';
-            ctx.fillStyle = '#00aaff';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText(clipObj.name, 256, 64);
-
-            const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(canvas) }));
-            sprite.position.set(xPos, 2.3, 0);
-            sprite.scale.set(1.5, 0.375, 1);
-            scene.add(sprite);
+            scene.add(rig.group);
+            scene.add(rig.helper);
+            rigs.push(rig);
         });
+
+        if (controlPanelElement) {
+            buildControlPanel(controlPanelElement, rigs);
+        }
 
         camera.position.set(0, 2, activeClips.length * 1.5 + 4);
         controls.update();
@@ -127,17 +101,9 @@ async function init() {
 function animate() {
     requestAnimationFrame(animate);
     const delta = clock.getDelta();
-    mixers.forEach(mixer => mixer.update(delta));
+    rigs.forEach(rig => rig.update(delta));
     renderer.render(scene, camera);
 }
-
-meshToggle?.addEventListener('change', event => {
-    meshGroup.visible = event.target.checked;
-});
-
-skeletonToggle?.addEventListener('change', event => {
-    skeletonGroup.visible = event.target.checked;
-});
 
 window.addEventListener('resize', () => {
     camera.aspect = window.innerWidth / window.innerHeight;

@@ -13,7 +13,7 @@ export function decodeBase64ToArray(b64String, ArrayType) {
 }
 
 export function normalizeTrackType(type) {
-    return type.replace(/_(raw_b64|quantize_b64|b64)$/, '');
+    return type.replace(/_(raw_b64|quantize_b64|bspline_b64|b64)$/, '');
 }
 
 export function buildTrack(baseType, name, times, values) {
@@ -23,30 +23,33 @@ export function buildTrack(baseType, name, times, values) {
     return null;
 }
 
-export function dequantizeTrack(trackDef, DataType) {
-    const codesTimes = decodeBase64ToArray(trackDef.times.codes_b64, DataType);
-    const codesValues = decodeBase64ToArray(trackDef.values.codes_b64, DataType);
+/**
+ * Dequantize a flat array of integer codes back to floats.
+ * Mirrors QuantizeCompressor._dequantize in src/compressors/quantization.py:
+ * `scale`/`zero` are either a single scalar (1-D data, e.g. times) or one
+ * value per trailing axis (e.g. one per quaternion component).
+ */
+export function dequantizeCodes(codes, scale, zero) {
+    const scales = Array.isArray(scale) ? scale : [scale];
+    const zeros = Array.isArray(zero) ? zero : [zero];
+    const dimension = scales.length;
+    const values = new Float32Array(codes.length);
 
-    const keyCount = codesTimes.length;
-    const dimension = codesValues.length / keyCount;
-
-    const times = new Float32Array(keyCount);
-    const values = new Float32Array(keyCount * dimension);
-
-    const timeScale = Array.isArray(trackDef.times.scale) ? trackDef.times.scale : [trackDef.times.scale];
-    const timeZero = Array.isArray(trackDef.times.zero) ? trackDef.times.zero : [trackDef.times.zero];
-    const valueScale = Array.isArray(trackDef.values.scale) ? trackDef.values.scale : [trackDef.values.scale];
-    const valueZero = Array.isArray(trackDef.values.zero) ? trackDef.values.zero : [trackDef.values.zero];
-
-    for (let i = 0; i < keyCount; i++) {
-        times[i] = timeScale[0] * (codesTimes[i] - timeZero[0]);
-        for (let d = 0; d < dimension; d++) {
-            const idx = i * dimension + d;
-            values[idx] = (valueScale.length > 1 ? valueScale[d] : valueScale[0]) * (codesValues[idx] - (valueZero.length > 1 ? valueZero[d] : valueZero[0]));
-        }
+    for (let i = 0; i < codes.length; i++) {
+        const axis = dimension === 1 ? 0 : i % dimension;
+        values[i] = scales[axis] * (codes[i] - zeros[axis]);
     }
 
-    return { times, values };
+    return values;
+}
+
+/**
+ * Decode + dequantize a `{ codes_b64, scale, zero }` node, the shape every
+ * quantized field (times, values, control_pts, ...) is packed in.
+ */
+export function decodeQuantizedNode(node, CodeType) {
+    const codes = decodeBase64ToArray(node.codes_b64, CodeType);
+    return dequantizeCodes(codes, node.scale, node.zero);
 }
 
 export function normalizeQuaternionValues(values) {
