@@ -12,10 +12,14 @@ const CONFIG = {
     clips: [
         // Per-clip overrides: `position: { x, y, z }`, `mode: 'mesh' | 'skeleton'`,
         // `visible: false`, `label: { fontSize, background, color, ... }`.
-        { name: '35 Original', url: '../data/json/clip_35.json' },
-        { name: '35 BSpline' , url: '../out/bspline/clip_bspl_35.json' },
-        { name: '47 Original', url: '../data/json/clip_47.json' },
-        { name: '47 BSpline' , url: '../out/bspline/clip_bspl_47.json' },
+        { name: '84 - Original', url: '../data/json/clip_84.json'     , position: { x:-0.3, y: 0.0, z:-3.0 } },
+        { name: '84 - 20CPS' , url: '../out/temp/clip_bspl_20_84.json', position: { x: 0.3, y: 0.0, z:-3.0 } },
+
+        { name: '84 - Original', url: '../data/json/clip_84.json'     , position: { x:-0.3, y: 0.0, z: 0.0 } },
+        { name: '84 - 40CPS' , url: '../out/temp/clip_bspl_40_84.json', position: { x: 0.3, y: 0.0, z: 0.0 } },
+
+        { name: '84 - Original', url: '../data/json/clip_84.json'     , position: { x:-0.3, y: 0.0, z: 3.0 } },
+        { name: '84 - 60CPS' , url: '../out/temp/clip_bspl_60_84.json', position: { x: 0.3, y: 0.0, z: 3.0 } },
     ]
 };
 

@@ -6,6 +6,7 @@ import numpy as np
 
 from src.model.alex import get_alex_skeleton
 
+# ----- CLIP LOADING & SAVING ----- #
 
 def load_clip(path):
     """Load a full json clip."""
@@ -35,6 +36,7 @@ def save_clip(data, path):
     with open(path, "w", encoding="utf-8") as file:
         json.dump(data, file, cls=NumpyEncoder, indent=4, ensure_ascii=False)
 
+# ----- PRINTING ----- #
 
 def print_json_structure(json_dict, level=0, indent=4):
     for key, val in json_dict.items():
@@ -60,6 +62,7 @@ def print_json_structure(json_dict, level=0, indent=4):
         else:
             print(f"{" " * indent * level}{key}: <{val_type.__name__}>")
 
+# ----- PACKING (for Processing / Animation) ----- #
 
 def pack_anim_to_dict(clip, target="values", includes_blendshapes=False, clean_names=True):
     """
@@ -136,6 +139,7 @@ def pack_anim_to_array(clip, kinematics_skeleton=get_alex_skeleton(), num_frames
             
     return anim_rotations
 
+# ----- TRACKS EXTRACTION ----- #
 
 def extract_tracks(tracks, type):
     """Extract only tracks that only contain type keyword from a list of tracks"""
@@ -154,12 +158,3 @@ def get_joint_idx(clip, name):
             return i
     return None
 
-
-def pack_b64(arr):
-    """Converts numpy array to bytes, then to base64 ASCII string"""
-    return base64.b64encode(arr.tobytes()).decode('ascii')
-
-
-def unpack_b64(b64_str, base_type):
-    """Converts base64 ASCII string back to numpy array of the base type"""
-    return np.frombuffer(base64.b64decode(b64_str), dtype=base_type)

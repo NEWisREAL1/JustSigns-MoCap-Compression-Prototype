@@ -9,7 +9,7 @@ from src.data import pack_b64, unpack_b64
 
 class FixedSizeBSplineCompressor(TrackCompressor):
     """
-    This solver apply B-Spline LSPIA fitting on values and perform 8-bit quantize on times.
+    This compressor apply B-Spline LSPIA fitting on values and perform 8-bit quantize on times.
     The B-Spline data are 16-bit quantized. 
 
     Critical: Assume same number of frame and same keyframe timing across all joints.
@@ -83,7 +83,7 @@ class FixedSizeBSplineCompressor(TrackCompressor):
         return compressed_tracks, global_attrs
 
 
-    def decompress(self, compressed_track, **kwargs) -> list:
+    def decompress(self, compressed_tracks, **kwargs) -> list:
         decompressed_tracks = []
 
         # processing global vars
@@ -100,7 +100,7 @@ class FixedSizeBSplineCompressor(TrackCompressor):
         t_codes = unpack_b64(global_times["codes_b64"], np.uint8) 
         dp_tiems = self.quantizer8._dequantize(t_codes, global_times["scale"], global_times["zero"])
 
-        for track in compressed_track:
+        for track in compressed_tracks:
             # input digestion
             values = track["values"]
             original_type = track["type"].replace("_bspline_b64", "")
