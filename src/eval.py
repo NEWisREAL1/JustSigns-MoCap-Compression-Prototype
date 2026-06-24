@@ -1,5 +1,6 @@
 import os
 
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
@@ -14,6 +15,7 @@ def mean_per_joint_position_error(pos_arr1, pos_arr2):
     distances = np.linalg.norm(pos_arr1 - pos_arr2, axis=-1)
     mpjpe = np.mean(distances)
     return mpjpe
+
 
 # ----- MEMORY USAGE ----- #
 
@@ -32,3 +34,50 @@ def memory_saving_matrix(paths, names, as_percents=True, clip_negs=False):
         matrix = np.clip(matrix, 0, None)
 
     return pd.DataFrame(data=matrix, index=names, columns=names)
+
+
+def plot_memory_usage_matrix(mem_mat: pd.DataFrame, color_thres=10):
+    matrix = mem_mat.values
+    names = mem_mat.index
+    n = matrix.shape[0]
+
+    fig, ax = plt.subplots(1, 1, figsize=(6,6))
+
+    # 1. Replace 0 with np.nan so they don't skew the color scale
+    matrix_for_plot = np.where(matrix == 0, np.nan, matrix)
+
+    # 2. Get the colormap and assign a specific color (black) for NaN values
+    cmap = plt.get_cmap("coolwarm").copy()
+    cmap.set_bad(color="black") 
+
+    # Plot using the modified matrix and colormap
+    im = ax.imshow(matrix_for_plot, cmap=cmap)
+    ax.figure.colorbar(im, ax=ax)
+
+    ax.set_xticks(np.arange(n))
+    ax.set_yticks(np.arange(n))
+    ax.set_xticklabels(names, rotation=45, ha="right", rotation_mode="anchor")
+    ax.set_yticklabels(names)
+
+    # Add text annotations
+    for i in range(n):
+        for j in range(n):
+            val = matrix[i, j]
+            if val == 0:
+                # Explicitly make zero-text white so it shows up on the black background
+                ax.text(j, i, "0.00%", ha="center", va="center", color="white")
+            else:
+                # Apply your existing text color logic to non-zero values
+                ax.text(j, i, f"{val:.2f}%",
+                        ha="center", va="center", color="k")
+
+    # Formatting grid
+    ax.spines[:].set_visible(False)
+    ax.set_xticks(np.arange(matrix.shape[1]+1)-.5, minor=True)
+    ax.set_yticks(np.arange(matrix.shape[0]+1)-.5, minor=True)
+    ax.grid(which="minor", color="w", linestyle='-', linewidth=3)
+    ax.tick_params(which="minor", bottom=False, left=False)
+
+    fig.suptitle("Memory Saving Matrix\n(Saving when Using \"Row\" Over \"Column\")", fontsize=16)
+    plt.tight_layout()
+    plt.show()

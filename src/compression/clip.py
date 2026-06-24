@@ -37,5 +37,16 @@ class ClipCompressor:
         return result
 
 
-    def decompress(self, clip):
-        pass
+    def decompress(self, compressed_clip):
+        blendshape_tracks_data = compressed_clip["animationClip"]["blendshape_tracks_data"]
+        quaternion_tracks_data = compressed_clip["animationClip"]["quaternion_tracks_data"]
+
+        decom_blendshape_tracks = self.blendshapes_compressor.decompress(blendshape_tracks_data)
+        decom_quaternion_tracks = self.quaternions_compressor.decompress(quaternion_tracks_data)
+
+        result = deepcopy(compressed_clip)
+        result["animationClip"].pop("blendshape_tracks_data")
+        result["animationClip"].pop("quaternion_tracks_data")
+        result["animationClip"]["tracks"] = decom_blendshape_tracks + decom_quaternion_tracks
+
+        return result

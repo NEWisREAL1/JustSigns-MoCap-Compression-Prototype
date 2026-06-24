@@ -12,14 +12,10 @@ const CONFIG = {
     clips: [
         // Per-clip overrides: `position: { x, y, z }`, `mode: 'mesh' | 'skeleton'`,
         // `visible: false`, `label: { fontSize, background, color, ... }`.
-        { name: '84 - Original', url: '../data/json/clip_84.json'     , position: { x:-0.3, y: 0.0, z:-3.0 } },
-        { name: '84 - 20CPS' , url: '../out/temp/clip_bspl_20_84.json', position: { x: 0.3, y: 0.0, z:-3.0 } },
-
-        { name: '84 - Original', url: '../data/json/clip_84.json'     , position: { x:-0.3, y: 0.0, z: 0.0 } },
-        { name: '84 - 40CPS' , url: '../out/temp/clip_bspl_40_84.json', position: { x: 0.3, y: 0.0, z: 0.0 } },
-
-        { name: '84 - Original', url: '../data/json/clip_84.json'     , position: { x:-0.3, y: 0.0, z: 3.0 } },
-        { name: '84 - 60CPS' , url: '../out/temp/clip_bspl_60_84.json', position: { x: 0.3, y: 0.0, z: 3.0 } },
+        { name: '481 Original'         , url: '../data/json/clip_481.json' },
+        { name: '481 RawBase64'        , url: '../out/rb64/clip_481_rb64.json' },
+        { name: '481 Quantized'        , url: '../out/quan/clip_481_quan.json' },
+        { name: '481 BlendshapesScheme', url: '../out/bsch/clip_481_bsch.json' },
     ]
 };
 

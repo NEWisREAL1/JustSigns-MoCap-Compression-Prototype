@@ -12,10 +12,6 @@ export function decodeBase64ToArray(b64String, ArrayType) {
     return new ArrayType(bytes.buffer);
 }
 
-export function normalizeTrackType(type) {
-    return type.replace(/_(raw_b64|quantize_b64|bspline_b64|b64)$/, '');
-}
-
 export function buildTrack(baseType, name, times, values) {
     if (baseType === 'quaternion') return new THREE.QuaternionKeyframeTrack(name, times, values);
     if (baseType === 'number') return new THREE.NumberKeyframeTrack(name, times, values);
@@ -24,46 +20,27 @@ export function buildTrack(baseType, name, times, values) {
 }
 
 /**
- * Dequantize a flat array of integer codes back to floats.
- * Mirrors QuantizeCompressor._dequantize in src/compressors/quantization.py:
- * `scale`/`zero` are either a single scalar (1-D data, e.g. times) or one
- * value per trailing axis (e.g. one per quaternion component).
+ * Maps a quantizer's stored bit depth (`q_bits` in the wire format) to the
+ * typed array that can hold its codes. Mirrors how src/compression/utils.py
+ * `quantize()` picks `2 ** num_bits - 1` as its code range.
  */
-export function dequantizeCodes(codes, scale, zero) {
-    const scales = Array.isArray(scale) ? scale : [scale];
-    const zeros = Array.isArray(zero) ? zero : [zero];
-    const dimension = scales.length;
-    const values = new Float32Array(codes.length);
-
-    for (let i = 0; i < codes.length; i++) {
-        const axis = dimension === 1 ? 0 : i % dimension;
-        values[i] = scales[axis] * (codes[i] - zeros[axis]);
-    }
-
-    return values;
+export function codeArrayTypeForBits(bits) {
+    if (bits === 8) return Uint8Array;
+    if (bits === 16) return Uint16Array;
+    if (bits === 32) return Uint32Array;
+    throw new Error(`Unsupported quantization bit depth: ${bits}`);
 }
 
 /**
- * Decode + dequantize a `{ codes_b64, scale, zero }` node, the shape every
- * quantized field (times, values, control_pts, ...) is packed in.
+ * Mirrors src/compression/utils.py: dequantize(codes, scale, zero).
+ * scale/zero are always plain scalars in the current format -- quantize()
+ * reduces the whole flattened array to a single min/max, even for
+ * multi-component data like quaternions, so there's no per-axis case here.
  */
-export function decodeQuantizedNode(node, CodeType) {
-    const codes = decodeBase64ToArray(node.codes_b64, CodeType);
-    return dequantizeCodes(codes, node.scale, node.zero);
-}
-
-export function normalizeQuaternionValues(values) {
-    for (let i = 0; i < values.length; i += 4) {
-        const x = values[i];
-        const y = values[i + 1];
-        const z = values[i + 2];
-        const w = values[i + 3];
-        const norm = Math.sqrt(x * x + y * y + z * z + w * w) + 1e-8;
-        values[i] /= norm;
-        values[i + 1] /= norm;
-        values[i + 2] /= norm;
-        values[i + 3] /= norm;
+export function dequantizeCodes(codes, scale, zero) {
+    const values = new Float32Array(codes.length);
+    for (let i = 0; i < codes.length; i++) {
+        values[i] = scale * (codes[i] - zero);
     }
-
     return values;
 }

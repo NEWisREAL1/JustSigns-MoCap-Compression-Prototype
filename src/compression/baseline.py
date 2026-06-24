@@ -55,9 +55,10 @@ class RawBase64Compressor:
 
 class QuantizeCompressor:
 
-    def __init__(self, type_name, q_type=np.uint8, type_validate=True):
+    def __init__(self, type_name, renormalize=False, q_type=np.uint8, type_validate=True):
         self.compress_type = "direct_quantize"
         self.type_name = type_name
+        self.renormalize = renormalize
         self.q_type = q_type
         self.type_validate = type_validate
     
@@ -77,7 +78,16 @@ class QuantizeCompressor:
 
         for track in tracks:
             t_codes, t_scale, t_zero = quantize(np.array(track["times"]), self.q_type)
-            v_codes, v_scale, v_zero = quantize(np.array(track["values"]), self.q_type)
+
+            if self.type_name == "quaternion":
+                values = np.array(track["values"]).reshape(-1, 4)
+                x_codes, x_scale, x_zero = quantize(values[:, 0], self.q_type)
+                y_codes, y_scale, y_zero = quantize(values[:, 1], self.q_type)
+                z_codes, z_scale, z_zero = quantize(values[:, 2], self.q_type)
+                w_codes, w_scale, w_zero = quantize(values[:, 3], self.q_type)
+            
+            else:
+                v_codes, v_scale, v_zero = quantize(np.array(track["values"]), self.q_type)
 
             com_track = {
                 "name": track["name"],
@@ -86,12 +96,23 @@ class QuantizeCompressor:
                     "scale": t_scale,
                     "zero": t_zero,
                 },
-                "q_values": {
+            }
+
+            if self.type_name == "quaternion":
+                com_track["q_values"] = {
+                    "x": { "codes_b64": pack_b64(x_codes), "scale": x_scale, "zero": x_zero },
+                    "y": { "codes_b64": pack_b64(y_codes), "scale": y_scale, "zero": y_zero },
+                    "z": { "codes_b64": pack_b64(z_codes), "scale": z_scale, "zero": z_zero },
+                    "w": { "codes_b64": pack_b64(w_codes), "scale": w_scale, "zero": w_zero },
+                }
+
+            else:
+                com_track["q_values"] = {
                     "codes_b64": pack_b64(v_codes),
                     "scale": v_scale,
                     "zero": v_zero,
-                },
-            }
+                }
+
             tracks_data["tracks"].append(com_track)
     
         return tracks_data
@@ -107,10 +128,34 @@ class QuantizeCompressor:
             q_times = track["q_times"]
             decode_t_codes = unpack_b64(q_times["codes_b64"], self.q_type)
             dq_times = dequantize(decode_t_codes, q_times["scale"], q_times["zero"])
-            
             q_values = track["q_values"]
-            decode_v_codes = unpack_b64(q_values["codes_b64"], self.q_type)
-            dq_values = dequantize(decode_v_codes, q_values["scale"], q_values["zero"])
+            
+            if type_name == "quaternion":
+                decode_x_codes = unpack_b64(q_values["x"]["codes_b64"], self.q_type)
+                dq_x_values = dequantize(decode_x_codes, q_values["x"]["scale"], q_values["x"]["zero"])
+
+                decode_y_codes = unpack_b64(q_values["y"]["codes_b64"], self.q_type)
+                dq_y_values = dequantize(decode_y_codes, q_values["y"]["scale"], q_values["y"]["zero"])
+
+                decode_z_codes = unpack_b64(q_values["z"]["codes_b64"], self.q_type)
+                dq_z_values = dequantize(decode_z_codes, q_values["z"]["scale"], q_values["z"]["zero"])
+
+                decode_w_codes = unpack_b64(q_values["w"]["codes_b64"], self.q_type)
+                dq_w_values = dequantize(decode_w_codes, q_values["w"]["scale"], q_values["w"]["zero"])
+
+                dq_values = np.stack([dq_x_values, dq_y_values, dq_z_values, dq_w_values], axis=1)
+                
+                if self.renormalize:
+                    dq_values = dq_values.reshape(-1, 4)
+                    norms = np.linalg.norm(dq_values, axis=1, keepdims=True)
+                    dq_values /= norms
+                    
+                dq_values = dq_values.reshape(-1)
+
+            else:
+                decode_v_codes = unpack_b64(q_values["codes_b64"], self.q_type)
+                dq_values = dequantize(decode_v_codes, q_values["scale"], q_values["zero"])
+
 
             decom_track = {
                 "name"   : track["name"],

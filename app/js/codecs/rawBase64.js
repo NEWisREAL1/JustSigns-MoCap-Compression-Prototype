@@ -1,18 +1,24 @@
-import { buildTrack, decodeBase64ToArray, normalizeTrackType } from './common.js';
+import { decodeBase64ToArray } from './common.js';
 
-export function canDecodeTrack(type) {
-    return type.endsWith('_raw_b64');
+// Mirrors RawBase64Compressor in src/compression/baseline.py. Unlike the old
+// per-track-type-suffix scheme, the new format decides the codec once per
+// `*_tracks_data` blob via `compression_type`, not per individual track.
+
+export function canDecode(blob) {
+    return blob.compression_type === 'raw_base64';
 }
 
-export function decodeTrack(trackDef, globalAttrs) {
-    const baseType = normalizeTrackType(trackDef.type);
-    const times = decodeBase64ToArray(trackDef.times_b64, Float64Array);
-    const values = decodeBase64ToArray(trackDef.values_b64, Float64Array);
-    return buildTrack(baseType, trackDef.name, times, values);
+export function decode(blob) {
+    return blob.tracks.map(track => ({
+        name: track.name,
+        type: blob.type_name,
+        times: decodeBase64ToArray(track.times_b64, Float64Array),
+        values: decodeBase64ToArray(track.values_b64, Float64Array),
+    }));
 }
 
 export const decoder = {
     name: 'raw_base64',
-    canDecodeTrack,
-    decodeTrack,
+    canDecode,
+    decode,
 };

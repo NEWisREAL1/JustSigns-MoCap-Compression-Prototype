@@ -68,6 +68,7 @@ This is the format of the grand propesed scheme on MoCap compression:
             'type_name': str,
             'q_bits': int,                  # number of bits used in quantization of "values"
             'f_fps': int,                   # fps used in frame index encoding of "times",
+            'f_bits': int,                  # number of bits used in encoding of "times",
             'groups': [                     # the list of unique groups of tracks
                 {
                     'names': list[str],                 # the blendshape names sharing the "times" and "values"

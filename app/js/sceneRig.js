@@ -4,9 +4,9 @@ import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 /**
  * One "sprite": a single positionable slot in the scene that holds both a
  * meshed clone and a skeleton-only clone of the same rig, plus a text label
- * above it. Only one of mesh/skeleton is visible at a time -- toggling
- * `mode` swaps between them in place instead of having two separately
- * positioned rows like the viewer used to.
+ * above it. `mode` controls which of mesh/skeleton is visible -- 'mesh' or
+ * 'skeleton' shows just one, 'both' shows them overlaid at the same spot,
+ * instead of having two separately positioned rows like the viewer used to.
  */
 
 const DEFAULT_LABEL = {
@@ -60,7 +60,7 @@ function buildLabelSprite(label) {
  * @param {THREE.AnimationClip} clip
  * @param {object} options
  * @param {{x?:number,y?:number,z?:number}} [options.position]
- * @param {'mesh'|'skeleton'} [options.mode]
+ * @param {'mesh'|'skeleton'|'both'} [options.mode]
  * @param {boolean} [options.visible]
  * @param {string} [options.name]
  * @param {object} [options.label] - overrides merged onto DEFAULT_LABEL
@@ -103,8 +103,8 @@ export function createRig(templateScene, clip, options = {}) {
     };
 
     function applyVisibility() {
-        meshInstance.visible = state.visible && state.mode === 'mesh';
-        skeletonInstance.visible = state.visible && state.mode === 'skeleton';
+        meshInstance.visible = state.visible && (state.mode === 'mesh' || state.mode === 'both');
+        skeletonInstance.visible = state.visible && (state.mode === 'skeleton' || state.mode === 'both');
         helper.visible = skeletonInstance.visible;
         labelSprite.visible = state.visible;
     }

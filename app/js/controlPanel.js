@@ -41,13 +41,18 @@ function makeRigRow(rig) {
     nameLabel.className = 'rig-row-name';
     nameLabel.textContent = rig.name;
 
+    const MODE_LABELS = { mesh: 'Mesh', skeleton: 'Skeleton', both: 'Both' };
+    const MODE_CYCLE = ['mesh', 'skeleton', 'both'];
+
     const modeToggle = document.createElement('button');
     modeToggle.type = 'button';
     modeToggle.className = 'rig-mode-toggle';
-    const renderModeLabel = () => { modeToggle.textContent = rig.mode === 'mesh' ? 'Mesh' : 'Skeleton'; };
+    modeToggle.title = 'Cycle Mesh / Skeleton / Both';
+    const renderModeLabel = () => { modeToggle.textContent = MODE_LABELS[rig.mode] ?? rig.mode; };
     renderModeLabel();
     modeToggle.addEventListener('click', () => {
-        rig.mode = rig.mode === 'mesh' ? 'skeleton' : 'mesh';
+        const next = MODE_CYCLE[(MODE_CYCLE.indexOf(rig.mode) + 1) % MODE_CYCLE.length];
+        rig.mode = next;
         renderModeLabel();
     });
 
