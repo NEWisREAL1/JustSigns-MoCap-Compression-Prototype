@@ -6,131 +6,119 @@ from src.compression.utils import dequantize, pack_b64, quantize, unpack_b64
 
 
 class RawBase64Compressor:
+    def __init__(self, type_name, type_validate=True):
+        self.compress_type = "raw_base64"
+        self.type_name = type_name
+        self.type_validate = type_validate
     
-    def compress(self, clip, pass_tracks=False) -> list:
-        if pass_tracks:
-            tracks = clip
-        else:
-            tracks = clip["animationClip"]["tracks"]
-        compressed_tracks = []
+    
+    def compress(self, tracks) -> list:
+        if self.type_validate:
+            for track in tracks:
+                if track["type"] != self.type_name:
+                    raise ValueError(f"Mismatch type name found, expected {self.type_name}, got {track["type"]}.")
+        
+        tracks_data = dict(
+            compression_type = self.compress_type,
+            type_name = self.type_name,
+            tracks = [],
+        )
 
         for track in tracks:
             com_track = {
-                "name"   : track["name"],
-                "type"   : track["type"] + "_raw_b64",
-                "times"  : pack_b64(np.asarray(track["times"], dtype=np.float64)),
-                "values" : pack_b64(np.asarray(track["values"], dtype=np.float64)),
+                "name"       : track["name"],
+                "times_b64"  : pack_b64(np.asarray(track["times"], dtype=np.float64)),
+                "values_b64" : pack_b64(np.asarray(track["values"], dtype=np.float64)),
             }
-            compressed_tracks.append(com_track)
-
-        if pass_tracks:
-            return compressed_tracks
-        
-        else:
-            compressed_clip = deepcopy(clip)
-            compressed_clip["animationClip"]["tracks"] = compressed_tracks
-            return compressed_clip
+            tracks_data["tracks"].append(com_track)
+    
+        return tracks_data
 
 
-    def decompress(self, compressed_clip) -> list:
-        tracks = compressed_clip["animationClip"]["tracks"]
+    def decompress(self, tracks_data) -> list:
         decompressed_tracks = []
+
+        type_name = tracks_data["type_name"]
+        tracks = tracks_data["tracks"]
 
         for track in tracks:
             decom_track = {
                 "name"   : track["name"],
-                "type"   : track["type"].replace("_raw_b64", ""),
-                "times"  : unpack_b64(track["times"], np.float64).tolist(),
-                "values" : unpack_b64(track["values"], np.float64).tolist(),
+                "type"   : type_name,
+                "times"  : unpack_b64(track["times_b64"], np.float64).tolist(),
+                "values" : unpack_b64(track["values_b64"], np.float64).tolist(),
             }
             decompressed_tracks.append(decom_track)
 
-        decompressed_clip = deepcopy(compressed_clip)
-        decompressed_clip["animationClip"]["tracks"] = decompressed_tracks
-
-        return decompressed_clip
+        return decompressed_tracks
 
 
 class QuantizeCompressor:
-    
-    def __init__(self, base_type=np.uint8):
-        self.base_type = base_type
 
-    def compress(self, clip) -> list:
-        tracks = clip["animationClip"]["tracks"]
-        compressed_tracks = []
+    def __init__(self, type_name, q_type=np.uint8, type_validate=True):
+        self.compress_type = "direct_quantize"
+        self.type_name = type_name
+        self.q_type = q_type
+        self.type_validate = type_validate
+    
+    
+    def compress(self, tracks) -> list:
+        if self.type_validate:
+            for track in tracks:
+                if track["type"] != self.type_name:
+                    raise ValueError(f"Mismatch type name found, expected {self.type_name}, got {track["type"]}.")
+        
+        tracks_data = dict(
+            compression_type = self.compress_type,
+            type_name = self.type_name,
+            q_bits = np.dtype(self.q_type).itemsize * 8,
+            tracks = [],
+        )
 
         for track in tracks:
-            # input digestion
-            times  = np.asarray(track["times"] , dtype=np.float64)
-            values = np.asarray(track["values"], dtype=np.float64)
+            t_codes, t_scale, t_zero = quantize(np.array(track["times"]), self.q_type)
+            v_codes, v_scale, v_zero = quantize(np.array(track["values"]), self.q_type)
 
-            if track["type"] == "quaternion":
-                values = values.reshape(-1, 4)
-
-            # quantizations
-            t_codes, t_scale, t_zero = quantize(times, q_type=self.base_type)
-            v_codes, v_scale, v_zero = quantize(values, q_type=self.base_type)
-
-            # pack track
             com_track = {
                 "name": track["name"],
-                "type": track["type"] + "_quantize_b64",
                 "q_times": {
-                    "codes" : pack_b64(t_codes),
-                    "scale" : t_scale,
-                    "zero"  : t_zero,
+                    "codes_b64": pack_b64(t_codes),
+                    "scale": t_scale,
+                    "zero": t_zero,
                 },
                 "q_values": {
-                    "codes" : pack_b64(v_codes),
-                    "scale" : v_scale,
-                    "zero"  : v_zero,
+                    "codes_b64": pack_b64(v_codes),
+                    "scale": v_scale,
+                    "zero": v_zero,
                 },
             }
-            compressed_tracks.append(com_track)
-
-        compressed_clip = deepcopy(clip)
-        compressed_clip["animationClip"]["tracks"] = compressed_tracks
-
-        return compressed_clip
+            tracks_data["tracks"].append(com_track)
+    
+        return tracks_data
 
 
-    def decompress(self, compressed_clip) -> list:
-        tracks = compressed_clip["animationClip"]["tracks"]
+    def decompress(self, tracks_data) -> list:
         decompressed_tracks = []
 
+        type_name = tracks_data["type_name"]
+        tracks = tracks_data["tracks"]
+
         for track in tracks:
-            # input digestion
-            times  = track["q_times"]
-            values = track["q_values"]
-            original_type = track["type"].replace("_quantize_b64", "")
-
-            # Base64 unpacking
-            times_codes  = unpack_b64(times["codes_b64"], self.base_type)
-            values_codes = unpack_b64(values["codes_b64"], self.base_type)
-            if original_type == "quaternion":
-                values_codes = values_codes.reshape(-1, 4)
-
-            # dequantizations
-            dq_times  = dequantize(times_codes, times["scale"], times["zero"])
-            dq_values = dequantize(values_codes, values["scale"], values["zero"])
+            q_times = track["q_times"]
+            decode_t_codes = unpack_b64(q_times["codes_b64"], self.q_type)
+            dq_times = dequantize(decode_t_codes, q_times["scale"], q_times["zero"])
             
-            # re-normalization
-            if original_type == "quaternion":
-                norms = np.linalg.norm(dq_values, axis=1, keepdims=True)
-                dq_values = dq_values / norms
+            q_values = track["q_values"]
+            decode_v_codes = unpack_b64(q_values["codes_b64"], self.q_type)
+            dq_values = dequantize(decode_v_codes, q_values["scale"], q_values["zero"])
 
-            # pack track
             decom_track = {
                 "name"   : track["name"],
-                "type"   : original_type,
+                "type"   : type_name,
                 "times"  : dq_times.tolist(),
-                "values" : dq_values.reshape(-1).tolist(),
+                "values" : dq_values.tolist(),
             }
             decompressed_tracks.append(decom_track)
 
-        decompressed_clip = deepcopy(compressed_clip)
-        decompressed_clip["animationClip"]["tracks"] = decompressed_tracks
-
-        return decompressed_clip
+        return decompressed_tracks
 

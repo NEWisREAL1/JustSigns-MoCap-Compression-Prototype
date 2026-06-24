@@ -57,10 +57,11 @@ def print_json_structure(json_dict, level=0, indent=4):
 
             else:
                 # only show len of the first entry
-                print(f"{" " * indent * level}{key}: [ {len(val)} entries of <{type(val[-1]).__name__}> ]")
+                print(f"{" " * indent * level}{key}: [ ~{len(val)} entries of <{type(val[-1]).__name__}> ]")
 
         else:
             print(f"{" " * indent * level}{key}: <{val_type.__name__}>")
+
 
 # ----- PACKING (for Processing / Animation) ----- #
 

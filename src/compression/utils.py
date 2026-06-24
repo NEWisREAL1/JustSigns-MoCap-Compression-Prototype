@@ -6,8 +6,11 @@ import numpy as np
 def quantize(data, q_type=np.uint8):
     """Perform quantization on a linear list of data"""
     data_min, data_max = np.min(data), np.max(data)
-    num_bits = np.dtype(q_type).itemsize * 8
 
+    if data_min == data_max:
+        return np.ones_like(data), 0, data_max
+
+    num_bits = np.dtype(q_type).itemsize * 8
     scale = (data_max - data_min) / (2 ** num_bits - 1)
     zero  = np.round(-data_min / scale)
     codes = np.round(data / scale) + zero

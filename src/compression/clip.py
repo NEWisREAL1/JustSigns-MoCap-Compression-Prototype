@@ -16,8 +16,8 @@ class ClipCompressor:
     
     def compress(self, clip):
         all_tracks = clip["animationClip"]["tracks"]
-        blendshapes_tracks = extract_tracks(all_tracks, type="number")
-        quaternions_tracks = extract_tracks(all_tracks, type="quaternion")
+        blendshapes_tracks = extract_tracks(all_tracks, type=self.blendshapes_compressor.type_name)
+        quaternions_tracks = extract_tracks(all_tracks, type=self.quaternions_compressor.type_name)
         
         if self.blendshapes_compressor is not None:
             blendshape_tracks_data = self.blendshapes_compressor.compress(blendshapes_tracks)
