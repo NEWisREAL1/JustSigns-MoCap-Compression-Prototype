@@ -62,6 +62,7 @@ function buildLabelSprite(label) {
  * @param {{x?:number,y?:number,z?:number}} [options.position]
  * @param {'mesh'|'skeleton'|'both'} [options.mode]
  * @param {boolean} [options.visible]
+ * @param {number} [options.speed] - AnimationMixer.timeScale; 1 = normal speed
  * @param {string} [options.name]
  * @param {object} [options.label] - overrides merged onto DEFAULT_LABEL
  */
@@ -100,7 +101,15 @@ export function createRig(templateScene, clip, options = {}) {
         visible: options.visible ?? true,
         mode: options.mode ?? 'mesh',
         position: { x: 0, y: 0, z: 0, ...options.position },
+        speed: options.speed ?? 1,
     };
+
+    function applySpeed() {
+        // AnimationMixer.timeScale multiplies the delta each mixer advances
+        // by, so this scales playback without touching the clip's own
+        // times/tracks -- slowing down is just timeScale < 1.
+        mixers.forEach(mixer => { mixer.timeScale = state.speed; });
+    }
 
     function applyVisibility() {
         meshInstance.visible = state.visible && (state.mode === 'mesh' || state.mode === 'both');
@@ -115,6 +124,7 @@ export function createRig(templateScene, clip, options = {}) {
 
     applyVisibility();
     applyPosition();
+    applySpeed();
 
     return {
         name: options.name ?? '',
@@ -132,6 +142,9 @@ export function createRig(templateScene, clip, options = {}) {
             Object.assign(state.position, partial);
             applyPosition();
         },
+
+        get speed() { return state.speed; },
+        set speed(value) { state.speed = value; applySpeed(); },
 
         update(delta) {
             mixers.forEach(mixer => mixer.update(delta));

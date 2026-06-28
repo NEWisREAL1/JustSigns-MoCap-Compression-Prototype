@@ -2,17 +2,22 @@ from copy import deepcopy
 
 import numpy as np
 
+from src.compression.base import BaseTracksCompressor
 from src.compression.utils import dequantize, pack_b64, quantize, unpack_b64
 
 
-class RawBase64Compressor:
+class RawBase64Compressor(BaseTracksCompressor):
     def __init__(self, type_name, type_validate=True):
         self.compress_type = "raw_base64"
         self.type_name = type_name
         self.type_validate = type_validate
+
+
+    def prepare(self, clip):
+        pass
     
-    
-    def compress(self, tracks) -> list:
+
+    def compress(self, tracks):
         if self.type_validate:
             for track in tracks:
                 if track["type"] != self.type_name:
@@ -35,7 +40,7 @@ class RawBase64Compressor:
         return tracks_data
 
 
-    def decompress(self, tracks_data) -> list:
+    def decompress(self, tracks_data):
         decompressed_tracks = []
 
         type_name = tracks_data["type_name"]
@@ -53,7 +58,7 @@ class RawBase64Compressor:
         return decompressed_tracks
 
 
-class QuantizeCompressor:
+class QuantizeCompressor(BaseTracksCompressor):
 
     def __init__(self, type_name, renormalize=False, q_type=np.uint8, type_validate=True):
         self.compress_type = "direct_quantize"
@@ -61,6 +66,10 @@ class QuantizeCompressor:
         self.renormalize = renormalize
         self.q_type = q_type
         self.type_validate = type_validate
+
+
+    def prepare(self, clip):
+        pass
     
     
     def compress(self, tracks) -> list:

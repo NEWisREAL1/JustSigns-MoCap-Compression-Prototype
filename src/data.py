@@ -36,6 +36,7 @@ def save_clip(data, path):
     with open(path, "w", encoding="utf-8") as file:
         json.dump(data, file, cls=NumpyEncoder, indent=4, ensure_ascii=False)
 
+
 # ----- PRINTING ----- #
 
 def print_json_structure(json_dict, level=0, indent=4):
@@ -112,7 +113,8 @@ def unpack_anim_dict_to_tracks(names, **dicts):
 def pack_anim_to_array(clip, kinematics_skeleton=get_alex_skeleton(), num_frames=None, includes_blendshapes=False, clean_names=True, input_as_anim_dict=False):
     """
     Packs a dictionary of named joint animations into a 3D NumPy array.\n
-    If a joint is missing, it seamlessly falls back to the static bind rotation.
+    If a joint is missing, it seamlessly falls back to the static bind rotation.\n
+    This function also handles missing joints by applying the bind rotaion from the bind kinematics_skeleton.
     """
     if input_as_anim_dict:
         anim_dict = clip
@@ -140,6 +142,7 @@ def pack_anim_to_array(clip, kinematics_skeleton=get_alex_skeleton(), num_frames
             
     return anim_rotations
 
+
 # ----- TRACKS EXTRACTION ----- #
 
 def extract_tracks(tracks, type):
@@ -151,9 +154,8 @@ def extract_tracks(tracks, type):
     return res
 
 
-def get_joint_idx(clip, name):
+def get_joint_idx(tracks, name):
     """Get the index of track corresponding for given joint name"""
-    tracks = clip["animationClip"]["tracks"]
     for i, track in enumerate(tracks):
         if name in track["name"]:
             return i

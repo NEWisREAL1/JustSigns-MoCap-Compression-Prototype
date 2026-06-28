@@ -2,6 +2,7 @@ from copy import deepcopy
 
 import numpy as np
 
+from src.compression.base import BaseTracksCompressor
 from src.compression.baseline import RawBase64Compressor
 from src.data import extract_tracks
 
@@ -9,12 +10,19 @@ from src.data import extract_tracks
 class ClipCompressor:
     """Orchestrator for end-to-end mocap clip compression"""
 
-    def __init__(self, blendshapes_compressor=None, quaternions_compressor=None):
+    def __init__(
+        self, 
+        blendshapes_compressor : BaseTracksCompressor = None, 
+        quaternions_compressor : BaseTracksCompressor = None,
+        ):
         self.blendshapes_compressor = blendshapes_compressor
         self.quaternions_compressor = quaternions_compressor
 
     
     def compress(self, clip):
+        self.blendshapes_compressor.prepare(clip)
+        self.quaternions_compressor.prepare(clip)
+        
         all_tracks = clip["animationClip"]["tracks"]
         blendshapes_tracks = extract_tracks(all_tracks, type=self.blendshapes_compressor.type_name)
         quaternions_tracks = extract_tracks(all_tracks, type=self.quaternions_compressor.type_name)

@@ -1,9 +1,10 @@
 import numpy as np
 
+from src.compression.base import BaseTracksCompressor
 from src.compression.utils import dequantize, pack_b64, quantize, unpack_b64
 
 
-class BlendShapesSchemeCompressor:
+class BlendShapesSchemeCompressor(BaseTracksCompressor):
 
     def __init__(
         self, 
@@ -18,6 +19,10 @@ class BlendShapesSchemeCompressor:
         self.f_type = frame_code_type
         self.fps = frame_code_fps
         self.decimation_thres = decimation_thres
+
+
+    def prepare(self, clip):
+        pass
 
 
     def compress(self, tracks):

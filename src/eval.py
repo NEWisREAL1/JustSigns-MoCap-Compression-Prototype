@@ -41,16 +41,14 @@ def plot_memory_usage_matrix(mem_mat: pd.DataFrame, color_thres=10):
     names = mem_mat.index
     n = matrix.shape[0]
 
-    fig, ax = plt.subplots(1, 1, figsize=(6,6))
+    fig, ax = plt.subplots(1, 1, figsize=(8,8))
 
-    # 1. Replace 0 with np.nan so they don't skew the color scale
+    # eeplace 0 with np.nan so they don't skew the color scale
     matrix_for_plot = np.where(matrix == 0, np.nan, matrix)
 
-    # 2. Get the colormap and assign a specific color (black) for NaN values
     cmap = plt.get_cmap("coolwarm").copy()
     cmap.set_bad(color="black") 
 
-    # Plot using the modified matrix and colormap
     im = ax.imshow(matrix_for_plot, cmap=cmap)
     ax.figure.colorbar(im, ax=ax)
 
@@ -59,17 +57,20 @@ def plot_memory_usage_matrix(mem_mat: pd.DataFrame, color_thres=10):
     ax.set_xticklabels(names, rotation=45, ha="right", rotation_mode="anchor")
     ax.set_yticklabels(names)
 
+    lo = np.mean(matrix[matrix != 0]) - np.std(matrix[matrix != 0])
+    hi = np.mean(matrix[matrix != 0]) + np.std(matrix[matrix != 0])
+
     # Add text annotations
     for i in range(n):
         for j in range(n):
             val = matrix[i, j]
             if val == 0:
-                # Explicitly make zero-text white so it shows up on the black background
                 ax.text(j, i, "0.00%", ha="center", va="center", color="white")
             else:
-                # Apply your existing text color logic to non-zero values
-                ax.text(j, i, f"{val:.2f}%",
-                        ha="center", va="center", color="k")
+                ax.text(
+                    j, i, f"{val:.2f}%", ha="center", va="center", 
+                    color="black" if lo < val < hi else "white"
+                    )
 
     # Formatting grid
     ax.spines[:].set_visible(False)

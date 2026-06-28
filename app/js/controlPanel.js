@@ -2,7 +2,37 @@
  * A minimal per-rig inspector: one row per loaded clip with a visibility
  * toggle, a mesh/skeleton mode switch, and X/Y/Z position fields. Pure DOM,
  * no framework -- rebuilt once after rigs are created via `buildControlPanel`.
+ * Also includes one global playback-speed slider applied to every rig.
  */
+
+function makeSpeedControl(rigs) {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'rig-speed-control';
+
+    const label = document.createElement('label');
+    label.textContent = 'Speed';
+
+    const slider = document.createElement('input');
+    slider.type = 'range';
+    slider.min = '0';
+    slider.max = '4';
+    slider.step = '0.1';
+    slider.value = '1';
+
+    const readout = document.createElement('span');
+    readout.className = 'rig-speed-readout';
+    const renderReadout = value => { readout.textContent = `${Number(value).toFixed(2)}x`; };
+    renderReadout(slider.value);
+
+    slider.addEventListener('input', () => {
+        renderReadout(slider.value);
+        const speed = parseFloat(slider.value);
+        rigs.forEach(rig => { rig.speed = speed; });
+    });
+
+    wrapper.append(label, slider, readout);
+    return wrapper;
+}
 
 function makePositionField(axis, rig) {
     const wrapper = document.createElement('label');
@@ -77,7 +107,7 @@ export function buildControlPanel(container, rigs) {
     header.className = 'rig-panel-header';
 
     const title = document.createElement('h3');
-    title.textContent = 'Clips';
+    title.textContent = 'Controls';
 
     const collapseToggle = document.createElement('button');
     collapseToggle.type = 'button';
@@ -90,6 +120,7 @@ export function buildControlPanel(container, rigs) {
 
     const content = document.createElement('div');
     content.className = 'rig-panel-content';
+    content.appendChild(makeSpeedControl(rigs));
     rigs.forEach(rig => content.appendChild(makeRigRow(rig)));
     container.appendChild(content);
 

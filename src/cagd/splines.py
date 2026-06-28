@@ -12,7 +12,7 @@ class StationarySpline:
 
         # dummy attributes (for compatability with BSpline)
         self.degree = 0
-        self.control_pts = np.array([singularity], dtype=np.float64)
+        self.control_points = np.array([singularity], dtype=np.float64)
         self.knot_vector = np.array([], dtype=np.float64)
 
     def __call__(self, t):
@@ -29,19 +29,19 @@ class BSpline:
     Wrapper for B-Spline logics and variables
     """
 
-    def __init__(self, degree, control_pts, knot_vector):
+    def __init__(self, degree, control_points, knot_vector):
         self.degree = degree
-        self.control_pts = np.array(control_pts, dtype=np.float64)
+        self.control_points = np.array(control_points, dtype=np.float64)
         self.knot_vector = np.array(knot_vector, dtype=np.float64)
         self._validate()
 
 
     def __call__(self, t):
         t_arr = np.atleast_1d(t)
-        n = len(self.control_pts)
+        n = len(self.control_points)
         
         pts = []
-        for i, cps in enumerate(self.control_pts):
+        for i, cps in enumerate(self.control_points):
             b = BSpline.basis(t_arr, i, self.degree, self.knot_vector, n=n)
             b = b.reshape(b.shape + (1,) * np.ndim(cps))
             pts.append(b * cps)
@@ -55,7 +55,7 @@ class BSpline:
 
     def _validate(self):
         p = self.degree
-        n = len(self.control_pts)
+        n = len(self.control_points)
         m = len(self.knot_vector)
 
         if m != p + n + 1:
@@ -113,7 +113,6 @@ class BSpline:
 
 
     @staticmethod
-    
     def generate_uniform_open_knots(degree, num_cps):
         num_internal_knots = num_cps - degree - 1
         num_external_knots = degree + 1

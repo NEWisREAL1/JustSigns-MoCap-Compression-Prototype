@@ -3,11 +3,12 @@ import os
 import sys
 
 from src._compression import ClipCompressor
-from src.cagd.lspia import LSPIASolver
 from src.compressors.bspline import FixedSizeBSplineCompressor
 from src.compressors.colinear import ColinearDecimatoinCompressor
 from src.compressors.quantization import QuantizeCompressor
 from src.compressors.raw_base64 import RawBase64Compressor
+
+from src.cagd.lspia import LSPIASolver
 from src.data import (
     extract_tracks,
     load_clip,
@@ -16,7 +17,7 @@ from src.data import (
 )
 from src.eval import mean_per_joint_position_error
 from src.model.alex import get_alex_skeleton
-from src.preprocessing import AntipodalPreprocessor
+from src.processing import AntipodalPreprocessor
 
 
 def main(clip_idx):

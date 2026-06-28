@@ -6,16 +6,19 @@ import { compileAnimationClip } from './codec.js';
 import { createRig } from './sceneRig.js';
 import { buildControlPanel } from './controlPanel.js';
 
+// const clips = []
+// for (let i = 180; i < 200; i++) {
+//     clips.push({ name: i, url: '../data/json/clip_' + i + '.json' })
+// }
+
 const CONFIG = {
     modelUrl: '../model/Alex_Rig_v2.4_rokoko_wface_nov30.glb',
     spacingX: 1.0, // fallback spacing for clips that don't set an explicit position.x
+    // clips: clips,
     clips: [
         // Per-clip overrides: `position: { x, y, z }`, `mode: 'mesh' | 'skeleton'`,
         // `visible: false`, `label: { fontSize, background, color, ... }`.
-        { name: '481 Original'         , url: '../data/json/clip_481.json' },
-        { name: '481 RawBase64'        , url: '../out/rb64/clip_481_rb64.json' },
-        { name: '481 Quantized'        , url: '../out/quan/clip_481_quan.json' },
-        { name: '481 BlendshapesScheme', url: '../out/bsch/clip_481_bsch.json' },
+        { name: '481 Original'  , url: '../data/json/clip_481.json' },
     ]
 };
 

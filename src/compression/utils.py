@@ -2,6 +2,20 @@ import base64
 
 import numpy as np
 
+LEFT_HAND = [
+    "pinky1_basel", "ring1_basel", "middle1_basel", "index1_basel",       
+    "thumb1l", "pinky1l", "ring1l", "middle1l", "index1l",            
+    "thumb2l", "pinky2l", "ring2l", "middle2l", "index2l",            
+    "thumb3l", "pinky3l", "ring3l", "middle3l", "index3l",            
+]
+
+RIGHT_HAND = [
+    "pinky1_baser", "ring1_baser", "middle1_baser", "index1_baser",       
+    "thumb1r", "pinky1r", "ring1r", "middle1r", "index1r",            
+    "thumb2r", "pinky2r", "ring2r", "middle2r", "index2r",            
+    "thumb3r", "pinky3r", "ring3r", "middle3r", "index3r",            
+]
+
 
 def quantize(data, q_type=np.uint8):
     """Perform quantization on a linear list of data"""

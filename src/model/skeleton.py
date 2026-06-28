@@ -9,6 +9,9 @@ class KinematicsSkeleton:
         self.bind_rotations = bind_rotations
         self.num_joints = len(joint_names)
 
+
+    ### ----- Kinematics ----- ###
+
     def forward_kinematics(self, anim_rotations, root_positions=None):
         m = anim_rotations.shape[0]
         J = self.num_joints
@@ -34,6 +37,9 @@ class KinematicsSkeleton:
             global_positions[:, j, :] = global_positions[:, p, :] + rotated_offset
             
         return global_positions, global_rotations
+
+
+    ### ----- Utils ----- ###
 
     @staticmethod
     def _quat_mult_batch(q1, q2):
